@@ -6,10 +6,13 @@ Thread-safe for concurrent fetches within a cell worker.
 
 from __future__ import annotations
 
+import os
 import re
 import threading
+import time
 from html import unescape
 from typing import Any, Final
+from urllib.parse import urlparse
 
 _DEFAULT_TIMEOUT: Final[float] = 28.0
 _MAX_ATTEMPTS: Final[int] = 2  # initial try + one retry
@@ -22,6 +25,8 @@ _BLANK_RE = re.compile(r"\n{3,}")
 
 _THREAD_LOCAL = threading.local()
 _CLIENT_LOCK = threading.Lock()
+_HOST_LOCK = threading.Lock()
+_HOST_NEXT_OK: dict[str, float] = {}
 
 
 def _html_to_text(html: str) -> str:
@@ -123,11 +128,45 @@ def _fetch_once(client: Any, target: str, limit: int) -> str:
     return _response_to_text(response, limit)
 
 
+def _host_spacing_seconds() -> float:
+    """Optional min gap between fetches to the same host (env ms → seconds)."""
+    raw = (os.getenv("META_LEGAL_FETCH_HOST_SPACING_MS") or "").strip()
+    if not raw:
+        return 0.0
+    try:
+        ms = float(raw)
+    except ValueError:
+        return 0.0
+    return max(0.0, ms / 1000.0)
+
+
+def _wait_host_spacing(url: str) -> None:
+    """Serialize lightly per host when spacing is configured."""
+    gap = _host_spacing_seconds()
+    if gap <= 0:
+        return
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except Exception:
+        host = ""
+    if not host:
+        return
+    with _HOST_LOCK:
+        now = time.monotonic()
+        ready_at = _HOST_NEXT_OK.get(host, 0.0)
+        delay = ready_at - now
+        if delay > 0:
+            time.sleep(delay)
+            now = time.monotonic()
+        _HOST_NEXT_OK[host] = now + gap
+
+
 def fetch_url(url: str, max_chars: int = 12000) -> str:
     """GET ``url`` and return plain-ish page text (truncated).
 
     Uses a thread-local httpx client with redirect following, ~28s timeout,
     HTML-preferring Accept header, and one automatic retry on transient failure.
+    Optional per-host spacing via ``META_LEGAL_FETCH_HOST_SPACING_MS`` (default 0).
     Never raises; returns ``""`` on failure or empty input.
     """
     target = (url or "").strip()
@@ -140,6 +179,8 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
     client = _get_client()
     if client is None:
         return ""
+
+    _wait_host_spacing(target)
 
     last_exc: Exception | None = None
     for attempt in range(_MAX_ATTEMPTS):

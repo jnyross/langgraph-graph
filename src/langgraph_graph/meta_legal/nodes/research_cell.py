@@ -1,12 +1,13 @@
 """Research-cell worker: search → fetch → LLM extract LawRecordDrafts.
 
 Soft-fail contract: never raise into the graph. Failures become ``cell_errors``
-and/or empty ``drafts`` list updates for the Annotated reducers.
+and/or empty ``drafts`` list updates for the Annotated reducers. Seed harvest
+always floors drafts when curated instruments/URLs exist (exp_006).
 """
-
 import json
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Mapping
@@ -25,6 +26,10 @@ from langgraph_graph.meta_legal.models import (
 )
 from langgraph_graph.meta_legal.tools.fetch import fetch_url as default_fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search as default_web_search
+from langgraph_graph.meta_legal.nodes.seed_harvest import (
+    harvest_seed_instruments,
+    merge_drafts,
+)
 
 
 class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
@@ -1520,14 +1525,30 @@ def _build_extract_messages(cell: ResearchCell, context: str, *, retry: bool = F
     ]
 
 
+def _is_rate_limit_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__} {exc}".lower()
+    return "429" in text or "rate limit" in text or "rate_limit" in text or "too many requests" in text
+
+
 def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
-    try:
-        return llm.invoke(messages)
-    except Exception:
+    """Invoke chat model; on OpenRouter/HTTP 429 retry once with short backoff."""
+
+    def _invoke_once() -> Any:
         try:
+            return llm.invoke(messages)
+        except Exception:
             return llm(messages)
-        except Exception as exc:
-            raise RuntimeError(f"llm invoke failed: {exc}") from exc
+
+    try:
+        return _invoke_once()
+    except Exception as first:
+        if not _is_rate_limit_error(first):
+            raise RuntimeError(f"llm invoke failed: {first}") from first
+        time.sleep(1.5)
+        try:
+            return _invoke_once()
+        except Exception as second:
+            raise RuntimeError(f"llm invoke failed after 429 retry: {second}") from second
 
 
 def _try_structured_output(llm: Any, messages: list[dict[str, str]]) -> Any | None:
@@ -1876,31 +1897,56 @@ def run_research_cell(
                     stage="research",
                 )
             )
-            return {"drafts": [], "cell_errors": errors}
+            active_llm = None
 
-    try:
-        drafts = _invoke_llm_for_drafts(
-            llm=active_llm,
-            cell=resolved,
-            context=context,
-            worker_model=worker_model,
-        )
-    except Exception as exc:
-        errors.append(
-            CellError(
-                cell_id=cell_id,
-                message=f"llm extraction failed: {exc}",
-                stage="research",
+    drafts = []
+    if active_llm is not None:
+        try:
+            drafts = _invoke_llm_for_drafts(
+                llm=active_llm,
+                cell=resolved,
+                context=context,
+                worker_model=worker_model,
             )
-        )
-        drafts = []
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"llm extraction failed: {exc}",
+                    stage="research",
+                )
+            )
+            drafts = []
 
     if not drafts and not any("search returned no results" in e.message for e in errors):
-        # Soft warning when model produced nothing usable
+        # Soft warning when model produced nothing usable (harvest may still fill).
         errors.append(
             CellError(
                 cell_id=cell_id,
                 message="llm returned no usable drafts",
+                stage="research",
+            )
+        )
+
+    # Deterministic floor: curated instruments + seed URLs even if LLM/search flaked.
+    try:
+        # Prefer already-fetched pages; harvest may fetch remaining seeds if needed.
+        harvested = harvest_seed_instruments(
+            resolved,
+            instruments=_instruments_for_cell(resolved),
+            seed_urls=seed_urls,
+            fetch_fn=fetch,
+            fetched_cache=fetched_by_url,
+            max_chars_excerpt=min(1200, max_chars_per_page),
+            max_chars_fetch=max_chars_per_page,
+            worker_model="seed_harvest",
+        )
+        drafts = merge_drafts(drafts, harvested)
+    except Exception as exc:
+        errors.append(
+            CellError(
+                cell_id=cell_id,
+                message=f"seed harvest failed: {exc}",
                 stage="research",
             )
         )
@@ -1937,6 +1983,7 @@ def research_cell(state: dict[str, Any] | ResearchCell | Any) -> dict[str, list[
 
 __all__ = [
     "build_search_queries",
+    "harvest_seed_instruments",
     "research_cell",
     "run_research_cell",
     "seed_urls_for_cell",
