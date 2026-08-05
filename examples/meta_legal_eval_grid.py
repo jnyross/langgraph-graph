@@ -125,7 +125,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--max-concurrency",
         type=int,
         default=None,
-        help="Override max_concurrency (default: run_config / env, usually 12)",
+        help="Override max_concurrency (default: run_config / env, usually 100)",
     )
     parser.add_argument(
         "--limit-cells",
