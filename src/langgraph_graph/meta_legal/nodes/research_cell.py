@@ -2143,56 +2143,12 @@ def run_research_cell(
         )
     context = "\n\n".join(context_parts)
 
-    # --- LLM extract ---
-    active_llm = llm
-    if active_llm is None:
-        try:
-            active_llm = get_llm(worker_model)
-        except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"llm init failed: {exc}",
-                    stage="research",
-                )
-            )
-            active_llm = None
-
-    drafts = []
-    if active_llm is not None:
-        try:
-            drafts = _invoke_llm_for_drafts(
-                llm=active_llm,
-                cell=resolved,
-                context=context,
-                worker_model=worker_model,
-            )
-        except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"llm extraction failed: {exc}",
-                    stage="research",
-                )
-            )
-            drafts = []
-
-    if not drafts and not search_empty:
-        # Soft warning when model produced nothing usable (harvest may still fill).
-        errors.append(
-            CellError(
-                cell_id=cell_id,
-                message="llm returned no usable drafts",
-                stage="research",
-            )
-        )
-
-    # Deterministic floor: curated instruments + seed URLs even if LLM/search flaked.
+    # --- deterministic harvest first (gold-safe: skip LLM when >=3 drafts) ---
+    drafts: list[LawRecordDraft] = []
     try:
         harvest_fetch = fetch
-        # If seed prefetch already filled body text, avoid a second network wave.
-        seed_bodies = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
-        if seed_bodies >= 2:
+        seed_bodies_n = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
+        if seed_bodies_n >= 2:
 
             def _cache_only(url: str, max_chars: int = 12000) -> str:
                 return fetched_by_url.get(url, "") or ""
@@ -2214,6 +2170,48 @@ def run_research_cell(
             CellError(
                 cell_id=cell_id,
                 message=f"seed harvest failed: {exc}",
+                stage="research",
+            )
+        )
+
+    # Skip LLM when harvest already produced enough drafts (coverage preserved).
+    need_llm = len(drafts) < 3
+    active_llm = llm
+    if need_llm and active_llm is None:
+        try:
+            active_llm = get_llm(worker_model)
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"llm init failed: {exc}",
+                    stage="research",
+                )
+            )
+            active_llm = None
+
+    if need_llm and active_llm is not None:
+        try:
+            llm_drafts = _invoke_llm_for_drafts(
+                llm=active_llm,
+                cell=resolved,
+                context=context,
+                worker_model=worker_model,
+            )
+            drafts = merge_drafts(llm_drafts, drafts)
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"llm extraction failed: {exc}",
+                    stage="research",
+                )
+            )
+    elif need_llm and not drafts and not search_empty:
+        errors.append(
+            CellError(
+                cell_id=cell_id,
+                message="llm returned no usable drafts",
                 stage="research",
             )
         )
