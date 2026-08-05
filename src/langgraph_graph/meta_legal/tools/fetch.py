@@ -321,9 +321,8 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
       - ``httpx``: thread-local httpx client only (exp004 path)
 
     Firecrawl concurrency gated by ``META_LEGAL_FIRECRAWL_MAX_PAR`` (default 20).
-    Process-wide memo caches successful non-empty bodies so parallel cells do
-    not re-scrape the same statute URL. Empty failures are not cached (a
-    transient miss must not poison EU/US seed inheritance across cells).
+    Process-wide memo caches successes and empty failures so parallel cells do
+    not re-scrape the same statute URL. Never raises; returns ``""`` on failure.
     """
     target = (url or "").strip()
     if not target:
