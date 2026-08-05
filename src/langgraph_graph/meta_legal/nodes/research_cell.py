@@ -2009,8 +2009,8 @@ def run_research_cell(
             **({"cell_errors": errors} if errors else {}),
         }
 
-    skip_search = seed_bodies >= 2
-
+    # Seeded cells: seeds+harvest are sufficient; skip web search entirely.
+    skip_search = bool(seed_urls) or seed_bodies >= 2
     # Wall-clock budget for search (skipped when seeds already provide bodies).
     budget_s: float = _search_budget_s()
     hits_by_query: dict[str, list[dict[str, str]]] = {}
