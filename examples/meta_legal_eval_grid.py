@@ -127,6 +127,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Override max_concurrency (default: run_config / env, usually 8)",
     )
+    parser.add_argument(
+        "--limit-cells",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Only run the first N explicit cells (mini eval / smoke)",
+    )
     return parser.parse_args(argv)
 
 
@@ -151,6 +158,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     explicit_cells = load_explicit_cells_from_gold(gold_path)
+    if args.limit_cells is not None:
+        limit = max(0, int(args.limit_cells))
+        explicit_cells = explicit_cells[:limit]
     jurisdictions = list(dict.fromkeys(c["jurisdiction"] for c in explicit_cells))
     domains = list(dict.fromkeys(c["domain"] for c in explicit_cells))
     subject = (args.subject or "Meta").strip() or "Meta"

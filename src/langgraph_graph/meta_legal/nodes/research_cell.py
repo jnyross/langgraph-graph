@@ -4,13 +4,13 @@ Soft-fail contract: never raise into the graph. Failures become ``cell_errors``
 and/or empty ``drafts`` list updates for the Annotated reducers.
 """
 
-from __future__ import annotations
-
 import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Literal, Mapping
+
+from pydantic import BaseModel, Field
 
 from langgraph_graph.meta_legal.llm import DEFAULT_MODEL, get_llm
 from langgraph_graph.meta_legal.models import (
@@ -1031,6 +1031,36 @@ _META_HOST_DEMOTE: tuple[str, ...] = (
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE)
 _META_NEXUS_OK = frozenset({"named_party", "platform_obligation", "sector_rule", "other"})
 _SOURCE_TYPE_OK = frozenset({"primary", "secondary"})
+_RETRY_JSON_ONLY_PROMPT = (
+    "Return a JSON array only. No markdown. No prose. "
+    "Each item needs title, citation, source_url from the materials, "
+    "source_type, excerpt, meta_nexus, meta_nexus_rationale, language, "
+    "effective_date, status, confidence. If nothing applies, return []."
+)
+
+
+class _ExtractedLawItem(BaseModel):
+    """LLM-facing draft fields only (cell/worker stamped later)."""
+
+    title: str = ""
+    citation: str = ""
+    source_url: str = ""
+    source_type: Literal["primary", "secondary"] = "secondary"
+    excerpt: str = ""
+    meta_nexus: Literal[
+        "named_party", "platform_obligation", "sector_rule", "other"
+    ] = "platform_obligation"
+    meta_nexus_rationale: str = ""
+    language: str = "en"
+    effective_date: str | None = None
+    status: str | None = None
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class _ExtractedLawList(BaseModel):
+    """Wrapper for with_structured_output (OpenAI-compatible tools/json_schema)."""
+
+    drafts: list[_ExtractedLawItem] = Field(default_factory=list)
 
 
 def _load_system_prompt(cell: ResearchCell) -> str:
@@ -1039,7 +1069,8 @@ def _load_system_prompt(cell: ResearchCell) -> str:
     except Exception:
         template = (
             "Extract laws for {{subject}} in {{jurisdiction}} / {{domain}}. "
-            "Return JSON {\"drafts\":[...]} with source_url and meta_nexus."
+            "Return a JSON array only with title, citation, source_url from materials, "
+            "and meta_nexus. No markdown."
         )
     return (
         template.replace("{{subject}}", cell.subject)
@@ -1294,6 +1325,36 @@ def _extract_json_payload(text: str) -> Any:
     return None
 
 
+def _payload_from_structured(response: Any) -> Any:
+    """Normalize with_structured_output / tool-call responses into parseable payload."""
+    if response is None:
+        return None
+    if isinstance(response, _ExtractedLawList):
+        return response.model_dump()
+    if isinstance(response, _ExtractedLawItem):
+        return [response.model_dump()]
+    if isinstance(response, list):
+        return response
+    if isinstance(response, Mapping):
+        return dict(response)
+    if hasattr(response, "model_dump"):
+        try:
+            dumped = response.model_dump()
+            if isinstance(dumped, (dict, list)):
+                return dumped
+        except Exception:
+            pass
+    if hasattr(response, "dict"):
+        try:
+            dumped = response.dict()
+            if isinstance(dumped, (dict, list)):
+                return dumped
+        except Exception:
+            pass
+    text = _message_text(response)
+    return _extract_json_payload(text) if text else None
+
+
 def _drafts_from_payload(
     payload: Any,
     *,
@@ -1311,6 +1372,8 @@ def _drafts_from_payload(
             items = payload["drafts"]
         elif isinstance(payload.get("records"), list):
             items = payload["records"]
+        elif isinstance(payload.get("items"), list):
+            items = payload["items"]
         else:
             items = [payload]
     else:
@@ -1368,6 +1431,106 @@ def _drafts_from_payload(
     return drafts
 
 
+def _build_extract_messages(cell: ResearchCell, context: str, *, retry: bool = False) -> list[dict[str, str]]:
+    system = _load_system_prompt(cell)
+    if retry:
+        user = (
+            f"{_RETRY_JSON_ONLY_PROMPT}\n\n"
+            f"Cell: {cell.cell_id}\n"
+            f"Jurisdiction: {cell.jurisdiction} ({cell.jurisdiction_id})\n"
+            f"Domain: {cell.domain} ({cell.domain_id})\n"
+            f"Subject: {cell.subject}\n\n"
+            f"Materials:\n{context}"
+        )
+        return [{"role": "user", "content": user}]
+
+    user = (
+        f"Cell: {cell.cell_id}\n"
+        f"Jurisdiction: {cell.jurisdiction} ({cell.jurisdiction_id})\n"
+        f"Domain: {cell.domain} ({cell.domain_id})\n"
+        f"Subject: {cell.subject}\n\n"
+        f"Search/fetch materials:\n{context}\n\n"
+        "Extract applicable law drafts. Return a JSON array only — no markdown fences, "
+        "no chain-of-thought, no wrapper object. source_url must come from the materials."
+    )
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
+    try:
+        return llm.invoke(messages)
+    except Exception:
+        try:
+            return llm(messages)
+        except Exception as exc:
+            raise RuntimeError(f"llm invoke failed: {exc}") from exc
+
+
+def _try_structured_output(llm: Any, messages: list[dict[str, str]]) -> Any | None:
+    """Prefer ChatOpenAI.with_structured_output when available (OpenRouter-compatible)."""
+    binder = getattr(llm, "with_structured_output", None)
+    if not callable(binder):
+        return None
+    structured = None
+    last_err: Exception | None = None
+    for kwargs in (
+        {"method": "json_schema"},
+        {"method": "function_calling"},
+        {},
+    ):
+        try:
+            structured = binder(_ExtractedLawList, **kwargs) if kwargs else binder(_ExtractedLawList)
+            break
+        except TypeError:
+            # Older signatures may not accept method=
+            try:
+                structured = binder(_ExtractedLawList)
+                break
+            except Exception as exc:
+                last_err = exc
+                structured = None
+        except Exception as exc:
+            last_err = exc
+            structured = None
+    if structured is None:
+        if last_err is not None:
+            return None
+        return None
+    try:
+        return _call_llm(structured, messages)
+    except Exception:
+        return None
+
+
+def _try_json_mode(llm: Any, messages: list[dict[str, str]]) -> Any | None:
+    """Fallback: OpenAI-compatible response_format json_object when supported."""
+    binder = getattr(llm, "bind", None)
+    if not callable(binder):
+        return None
+    bound = None
+    for fmt in (
+        {"type": "json_object"},
+        {"type": "json_schema", "json_schema": {
+            "name": "law_drafts",
+            "schema": _ExtractedLawList.model_json_schema(),
+        }},
+    ):
+        try:
+            bound = binder(response_format=fmt)
+            break
+        except Exception:
+            bound = None
+    if bound is None:
+        return None
+    try:
+        return _call_llm(bound, messages)
+    except Exception:
+        return None
+
+
 def _invoke_llm_for_drafts(
     *,
     llm: Any,
@@ -1375,32 +1538,54 @@ def _invoke_llm_for_drafts(
     context: str,
     worker_model: str,
 ) -> list[LawRecordDraft]:
-    system = _load_system_prompt(cell)
-    user = (
-        f"Cell: {cell.cell_id}\n"
-        f"Jurisdiction: {cell.jurisdiction} ({cell.jurisdiction_id})\n"
-        f"Domain: {cell.domain} ({cell.domain_id})\n"
-        f"Subject: {cell.subject}\n\n"
-        f"Search/fetch materials:\n{context}\n\n"
-        "Extract applicable law drafts as JSON only. Do not include chain-of-thought; output JSON only."
-    )
+    """Extract drafts via structured output → JSON mode → text parse, with one empty retry.
 
-    messages = [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
+    Never raises; empty list on total failure (caller records cell_errors).
+    """
+    messages = _build_extract_messages(cell, context, retry=False)
 
+    def _parse_response(response: Any) -> list[LawRecordDraft]:
+        payload = _payload_from_structured(response)
+        return _drafts_from_payload(payload, cell=cell, worker_model=worker_model)
+
+    # 1) structured output (preferred)
+    response = _try_structured_output(llm, messages)
+    if response is not None:
+        drafts = _parse_response(response)
+        if drafts:
+            return drafts
+
+    # 2) JSON mode / response_format
+    response = _try_json_mode(llm, messages)
+    if response is not None:
+        drafts = _parse_response(response)
+        if drafts:
+            return drafts
+
+    # 3) plain text invoke + JSON parse
     try:
-        response = llm.invoke(messages)
+        response = _call_llm(llm, messages)
+        drafts = _parse_response(response)
+        if drafts:
+            return drafts
     except Exception:
-        try:
-            response = llm(messages)
-        except Exception as exc:
-            raise RuntimeError(f"llm invoke failed: {exc}") from exc
+        drafts = []
 
-    text = _message_text(response)
-    payload = _extract_json_payload(text)
-    return _drafts_from_payload(payload, cell=cell, worker_model=worker_model)
+    # 4) one automatic retry with shorter "JSON array only" prompt
+    retry_messages = _build_extract_messages(cell, context, retry=True)
+    try:
+        # Prefer lightweight paths on retry: json mode then plain text.
+        response = _try_json_mode(llm, retry_messages)
+        if response is None:
+            response = _call_llm(llm, retry_messages)
+        drafts = _parse_response(response)
+        if drafts:
+            return drafts
+    except Exception:
+        return []
+
+    return []
+
 
 
 def _resolve_worker_model(llm: Any | None) -> str:

@@ -32,7 +32,7 @@ class _FakeLLM:
         return _Msg(self.content)
 
     def with_structured_output(self, *_a: Any, **_k: Any) -> Any:
-        raise RuntimeError("structured output unused in unit tests")
+        raise TypeError("structured output unused in unit tests")
 
 
 def _sample_cell(**overrides: Any) -> ResearchCell:
