@@ -271,10 +271,11 @@ def test_host_score_demotes_meta_marketing() -> None:
 
 
 def test_partial_fetch_failure_still_yields_drafts() -> None:
+    # Seedless cell so search hits drive fetch (seed-first path would skip search).
     cell = _sample_cell(
-        cell_id="united_kingdom::youth_safety",
-        jurisdiction="United Kingdom",
-        jurisdiction_id="united_kingdom",
+        cell_id="atlantis::youth_safety",
+        jurisdiction="Atlantis",
+        jurisdiction_id="atlantis",
         domain="youth_safety",
         domain_id="youth_safety",
     )

@@ -47,9 +47,9 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
 
-# exp_007/010: cap queries per cell and bound search wall-clock (all cells).
-DEFAULT_MAX_QUERIES = 4
-DEFAULT_SEARCH_BUDGET_S = 6.0
+# Speed campaign defaults: tight caps; harvest floor preserves coverage.
+DEFAULT_MAX_QUERIES = 3
+DEFAULT_SEARCH_BUDGET_S = 4.0
 _SEARCH_QUERY_WORKERS = 6
 
 
@@ -1943,24 +1943,44 @@ def run_research_cell(
             return url, "", f"fetch failed for {url}: {exc}"
         return url, text, None
 
-    # Prefetch top seeds while search runs (cache makes later harvest free).
+    # Prefetch top seeds first; if they succeed, skip web search entirely.
     seed_prefetch = seed_urls[: min(4, len(seed_urls))]
     fetched_by_url: dict[str, str] = {}
-    prefetch_pool: _DaemonThreadPoolExecutor | None = None
-    prefetch_futs: dict[Any, str] = {}
     if seed_prefetch:
-        prefetch_pool = _DaemonThreadPoolExecutor(
-            max_workers=min(4, len(seed_prefetch))
-        )
-        prefetch_futs = {
-            prefetch_pool.submit(_fetch_one, u): u for u in seed_prefetch
-        }
+        pre_pool = _DaemonThreadPoolExecutor(max_workers=min(4, len(seed_prefetch)))
+        try:
+            pre_futs = {pre_pool.submit(_fetch_one, u): u for u in seed_prefetch}
+            for fut in as_completed(pre_futs, timeout=12.0):
+                url = pre_futs[fut]
+                try:
+                    got_url, text, err_msg = fut.result()
+                except Exception as exc:
+                    errors.append(
+                        CellError(
+                            cell_id=cell_id,
+                            message=f"seed prefetch failed for {url}: {exc}",
+                            stage="research",
+                        )
+                    )
+                    continue
+                if err_msg:
+                    errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
+                if (text or "").strip():
+                    fetched_by_url[got_url] = text.strip()
+        except FuturesTimeout:
+            # Keep whatever arrived; remaining seeds may still fetch later.
+            pass
+        finally:
+            pre_pool.shutdown(wait=False, cancel_futures=True)
 
-    # Wall-clock budget for every cell (seeded and seedless).
+    seed_bodies = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
+    skip_search = seed_bodies >= 2
+
+    # Wall-clock budget for search (skipped when seeds already provide bodies).
     budget_s: float = _search_budget_s()
     hits_by_query: dict[str, list[dict[str, str]]] = {}
     try:
-        if queries:
+        if queries and not skip_search:
             pool = _DaemonThreadPoolExecutor(
                 max_workers=min(_SEARCH_QUERY_WORKERS, len(queries))
             )
@@ -2019,29 +2039,6 @@ def run_research_cell(
             CellError(cell_id=cell_id, message=f"search loop failed: {exc}", stage="research")
         )
 
-    # Collect seed prefetch results.
-    if prefetch_futs:
-        for fut, url in prefetch_futs.items():
-            try:
-                got_url, text, err_msg = fut.result(timeout=0.1)
-            except Exception:
-                try:
-                    got_url, text, err_msg = fut.result(timeout=12.0)
-                except Exception as exc:
-                    errors.append(
-                        CellError(
-                            cell_id=cell_id,
-                            message=f"seed prefetch failed for {url}: {exc}",
-                            stage="research",
-                        )
-                    )
-                    continue
-            if err_msg:
-                errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
-            if (text or "").strip():
-                fetched_by_url[got_url] = text.strip()
-    if prefetch_pool is not None:
-        prefetch_pool.shutdown(wait=False, cancel_futures=True)
 
     for seed in seed_urls:
         search_hits.append(
