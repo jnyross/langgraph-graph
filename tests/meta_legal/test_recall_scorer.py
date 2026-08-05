@@ -10,7 +10,9 @@ from pathlib import Path
 import pytest
 
 from evals.meta_legal.match import (
+    citations_match,
     gold_found,
+    jurisdictions_compatible,
     load_gold_set,
     load_predictions,
     match_gold_to_predictions,
@@ -98,6 +100,23 @@ def test_normalize_citation_compacts_alnum() -> None:
     assert normalize_citation(None) == ""
 
 
+def test_normalize_citation_strips_eu_boilerplate_variants() -> None:
+    gold = "Regulation (EU) 2016/679"
+    variants = [
+        "Reg. (EU) 2016/679",
+        "EU 2016/679",
+        "2016/679",
+        "Regulation (EU) No 2016/679",
+    ]
+    for v in variants:
+        assert citations_match(gold, v), (gold, v, normalize_citation(gold), normalize_citation(v))
+    assert citations_match("Directive (EU) 2019/790", "Directive 2019/790/EU")
+    assert citations_match("Pub. L. 111-260", "Public Law 111-260")
+    assert citations_match("TFEU Art. 101", "Article 101 TFEU")
+    # Partial USC range vs single section should still match under family+substring.
+    assert citations_match("15 U.S.C. §§ 6501–6506", "15 USC 6501")
+
+
 def test_normalize_title_slug() -> None:
     assert normalize_title_slug("Digital Markets Act") == "digital_markets_act"
     assert normalize_title_slug("  GDPR  ") == "gdpr"
@@ -114,7 +133,7 @@ def test_significant_url_key_strips_tracking_and_slash() -> None:
 def test_match_by_citation() -> None:
     gold = {
         "gold_id": "g1",
-        "title":"General Data Protection Regulation",
+        "title": "General Data Protection Regulation",
         "jurisdiction_id": "european_union",
         "domain_id": "privacy",
         "citation": "Regulation (EU) 2016/679",
@@ -127,6 +146,28 @@ def test_match_by_citation() -> None:
             "jurisdiction_id": "united_states",
             "domain_id": "ip",
             "citation": "Regulation (EU) 2016/679",
+            "source_url": "https://example.test/other",
+        }
+    ]
+    assert gold_found(gold, preds) is True
+
+
+def test_match_by_citation_variant_forms() -> None:
+    gold = {
+        "gold_id": "g1b",
+        "title": "General Data Protection Regulation",
+        "jurisdiction_id": "european_union",
+        "domain_id": "privacy",
+        "citation": "Regulation (EU) 2016/679",
+        "source_url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+        "aliases": ["GDPR"],
+    }
+    preds = [
+        {
+            "title": "GDPR text",
+            "jurisdiction_id": "european_union",
+            "domain_id": "privacy",
+            "citation": "Reg. (EU) 2016/679",
             "source_url": "https://example.test/other",
         }
     ]
@@ -177,17 +218,77 @@ def test_match_by_title_alias_same_jurisdiction_domain() -> None:
     ]
     assert gold_found(gold, preds_hit) is True
 
-    # Same title slug but wrong jurisdiction → miss
+    # Same title slug but wrong non-parent jurisdiction → miss
     preds_miss = [
         {
             "title": "California Consumer Privacy Act",
-            "jurisdiction_id": "united_states",
+            "jurisdiction_id": "brazil",
             "domain_id": "privacy",
             "citation": "different-cite",
             "source_url": "https://other.test/x",
         }
     ]
     assert gold_found(gold, preds_miss) is False
+
+
+def test_match_parent_jurisdiction_us_state_under_united_states() -> None:
+    """Title/alias match may bridge california ↔ united_states (US parent only)."""
+    gold = {
+        "gold_id": "g3p",
+        "title": "California Consumer Privacy Act",
+        "jurisdiction_id": "california",
+        "domain_id": "privacy",
+        "citation": "Cal. Civ. Code §§ 1798.100 et seq.",
+        "source_url": "https://example.test/ccpa",
+        "aliases": ["CCPA"],
+    }
+    preds = [
+        {
+            "title": "CCPA California Consumer Privacy Act overview",
+            "jurisdiction_id": "united_states",
+            "domain_id": "privacy",
+            "citation": "different-cite",
+            "source_url": "https://other.test/x",
+        }
+    ]
+    assert jurisdictions_compatible("california", "united_states") is True
+    assert jurisdictions_compatible("california", "brazil") is False
+    assert jurisdictions_compatible("european_union", "germany") is False
+    assert gold_found(gold, preds) is True
+
+    # Parent bridge still requires domain match.
+    preds_wrong_domain = [
+        {
+            "title": "CCPA",
+            "jurisdiction_id": "united_states",
+            "domain_id": "competition",
+            "citation": "different-cite",
+            "source_url": "https://other.test/x",
+        }
+    ]
+    assert gold_found(gold, preds_wrong_domain) is False
+
+
+def test_match_alias_token_containment_in_title() -> None:
+    gold = {
+        "gold_id": "g3a",
+        "title": "Digital Markets Act",
+        "jurisdiction_id": "european_union",
+        "domain_id": "competition",
+        "citation": "other-cite",
+        "source_url": "https://example.test/dma-other",
+        "aliases": ["DMA"],
+    }
+    preds = [
+        {
+            "title": "EU DMA gatekeeper obligations summary",
+            "jurisdiction_id": "european_union",
+            "domain_id": "competition",
+            "citation": "nope",
+            "source_url": "https://other.test/y",
+        }
+    ]
+    assert gold_found(gold, preds) is True
 
 
 def test_match_gold_to_predictions_summary() -> None:

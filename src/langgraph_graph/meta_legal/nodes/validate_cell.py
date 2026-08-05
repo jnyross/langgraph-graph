@@ -63,6 +63,19 @@ def _norm_id(value: str, *, kind: str) -> str:
     return slugify(text)
 
 
+def _canonical_cell_jurisdiction_id(cell: ResearchCell | None) -> str:
+    """Stable gold-compatible jurisdiction slug for the active cell."""
+    if cell is None:
+        return ""
+    raw = (cell.jurisdiction_id or "").strip()
+    if raw:
+        return _norm_id(raw, kind="jurisdiction")
+    label = (cell.jurisdiction or "").strip()
+    if label:
+        return _norm_id(label, kind="jurisdiction")
+    return ""
+
+
 def _cell_from_state(state: Mapping[str, Any]) -> ResearchCell | None:
     """Build a ResearchCell from state when present (Send payload or full state)."""
     cell = state.get("cell")
@@ -213,6 +226,18 @@ def validate_drafts(
             continue
 
         payload = draft.model_dump()
+        # Producer-side alignment: accepted records always carry the cell's
+        # canonical jurisdiction/domain slugs (gold-compatible), even if the
+        # LLM emitted a label/alias that normalized equivalently.
+        if cell is not None:
+            canon_j = _canonical_cell_jurisdiction_id(cell)
+            canon_d = _norm_id(cell.domain_id or cell.domain, kind="domain")
+            if canon_j:
+                payload["jurisdiction_id"] = canon_j
+            if canon_d:
+                payload["domain_id"] = canon_d
+            if not (payload.get("cell_id") or "").strip():
+                payload["cell_id"] = cell.cell_id
         accepted.append(LawRecord(**payload, validated=True))
 
     return accepted, rejected
