@@ -16,6 +16,9 @@ from urllib.parse import urlparse
 
 _DEFAULT_TIMEOUT: Final[float] = 28.0
 _MAX_ATTEMPTS: Final[int] = 2  # initial try + one retry
+FIRECRAWL_API_URL_ENV: Final[str] = "FIRECRAWL_API_URL"
+FETCH_BACKEND_ENV: Final[str] = "META_LEGAL_FETCH_BACKEND"
+FIRECRAWL_MAX_PAR_ENV: Final[str] = "META_LEGAL_FIRECRAWL_MAX_PAR"
 _SCRIPT_STYLE_RE = re.compile(
     r"(?is)<(script|style|noscript|svg|iframe)\b[^>]*>.*?</\1\s*>"
 )
@@ -27,6 +30,9 @@ _THREAD_LOCAL = threading.local()
 _CLIENT_LOCK = threading.Lock()
 _HOST_LOCK = threading.Lock()
 _HOST_NEXT_OK: dict[str, float] = {}
+_FIRECRAWL_SEM: threading.Semaphore | None = None
+_FIRECRAWL_SEM_LOCK = threading.Lock()
+_FIRECRAWL_SEM_SIZE: int | None = None
 
 
 def _html_to_text(html: str) -> str:
@@ -161,14 +167,86 @@ def _wait_host_spacing(url: str) -> None:
         _HOST_NEXT_OK[host] = now + gap
 
 
-def fetch_url(url: str, max_chars: int = 12000) -> str:
-    """GET ``url`` and return plain-ish page text (truncated).
+def _firecrawl_api_url() -> str:
+    return (os.getenv(FIRECRAWL_API_URL_ENV) or "http://localhost:3002").rstrip("/")
 
-    Uses a thread-local httpx client with redirect following, ~28s timeout,
-    HTML-preferring Accept header, and one automatic retry on transient failure.
-    Optional per-host spacing via ``META_LEGAL_FETCH_HOST_SPACING_MS`` (default 0).
-    Never raises; returns ``""`` on failure or empty input.
+
+def _fetch_backend() -> str:
+    raw = (os.getenv(FETCH_BACKEND_ENV) or "auto").strip().lower()
+    if raw in {"auto", "firecrawl", "httpx"}:
+        return raw
+    return "auto"
+
+
+def _firecrawl_semaphore() -> threading.Semaphore:
+    """Module-level semaphore sized by META_LEGAL_FIRECRAWL_MAX_PAR (default 20)."""
+    global _FIRECRAWL_SEM, _FIRECRAWL_SEM_SIZE
+    try:
+        size = max(1, int(os.getenv(FIRECRAWL_MAX_PAR_ENV) or "20"))
+    except ValueError:
+        size = 20
+    with _FIRECRAWL_SEM_LOCK:
+        if _FIRECRAWL_SEM is None or _FIRECRAWL_SEM_SIZE != size:
+            _FIRECRAWL_SEM = threading.Semaphore(size)
+            _FIRECRAWL_SEM_SIZE = size
+        return _FIRECRAWL_SEM
+
+
+def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
+    """POST local/self-hosted Firecrawl ``/v2/scrape``; never raises.
+
+    Returns truncated markdown on success, else ``""``.
     """
+    target = (url or "").strip()
+    if not target:
+        return ""
+    limit = max(0, int(max_chars if max_chars is not None else 12000))
+    try:
+        import httpx
+    except Exception:
+        return ""
+
+    sem = _firecrawl_semaphore()
+    acquired = False
+    try:
+        sem.acquire()
+        acquired = True
+        response = httpx.post(
+            f"{_firecrawl_api_url()}/v2/scrape",
+            json={
+                "url": target,
+                "formats": ["markdown"],
+                "onlyMainContent": True,
+                "timeout": 30000,
+            },
+            timeout=35.0,
+        )
+        if response.status_code != 200:
+            return ""
+        body = response.json()
+        if not isinstance(body, dict) or body.get("success") is not True:
+            return ""
+        data = body.get("data") or {}
+        if not isinstance(data, dict):
+            return ""
+        md = data.get("markdown") or ""
+        if not isinstance(md, str) or not md:
+            return ""
+        if limit and len(md) > limit:
+            return md[:limit]
+        return md
+    except Exception:
+        return ""
+    finally:
+        if acquired:
+            try:
+                sem.release()
+            except Exception:
+                pass
+
+
+def _fetch_via_httpx(url: str, max_chars: int) -> str:
+    """Existing httpx path (thread-local client, retry, host spacing). Never raises."""
     target = (url or "").strip()
     if not target:
         return ""
@@ -198,3 +276,35 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
 
     _ = last_exc  # retained for potential future debug hooks
     return ""
+
+
+def fetch_url(url: str, max_chars: int = 12000) -> str:
+    """GET ``url`` and return plain-ish page text (truncated).
+
+    Backend via ``META_LEGAL_FETCH_BACKEND``:
+      - ``auto`` (default): try local Firecrawl scrape first, fall through to httpx
+      - ``firecrawl``: Firecrawl only
+      - ``httpx``: thread-local httpx client only (exp004 path)
+
+    Firecrawl concurrency gated by ``META_LEGAL_FIRECRAWL_MAX_PAR`` (default 20).
+    Never raises; returns ``""`` on failure or empty input.
+    """
+    target = (url or "").strip()
+    if not target:
+        return ""
+    if not (target.startswith("http://") or target.startswith("https://")):
+        return ""
+
+    limit = max(0, int(max_chars if max_chars is not None else 12000))
+    backend = _fetch_backend()
+
+    if backend == "httpx":
+        return _fetch_via_httpx(target, limit)
+    if backend == "firecrawl":
+        return _fetch_via_firecrawl(target, limit)
+
+    # auto: firecrawl first, httpx fallback
+    text = _fetch_via_firecrawl(target, limit)
+    if text:
+        return text
+    return _fetch_via_httpx(target, limit)

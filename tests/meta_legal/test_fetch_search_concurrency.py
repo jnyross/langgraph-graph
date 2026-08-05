@@ -55,7 +55,8 @@ def test_max_concurrency_env_override(monkeypatch: Any) -> None:
     assert max_concurrency() == 100
 
 
-def test_fetch_url_retries_once_on_failure() -> None:
+def test_fetch_url_retries_once_on_failure(monkeypatch: Any) -> None:
+    monkeypatch.setenv("META_LEGAL_FETCH_BACKEND", "httpx")
     fetch_mod._close_thread_client()
     calls = {"n": 0}
 
@@ -116,9 +117,11 @@ def test_fetch_url_prefers_html_accept_header() -> None:
     fetch_mod._close_thread_client()
 
 
-def test_web_search_caches_identical_queries() -> None:
+def test_web_search_caches_identical_queries(monkeypatch: Any) -> None:
     clear_search_cache()
     reset_search_breaker()
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     calls = {"n": 0}
 
     def fake_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
@@ -132,10 +135,8 @@ def test_web_search_caches_identical_queries() -> None:
         ]
 
     with patch.object(search_mod, "_search_ddg", side_effect=fake_ddg):
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("TAVILY_API_KEY", None)
-            a = web_search("GDPR official text", 5)
-            b = web_search("gdpr official text", 5)  # case-normalized cache key
+        a = web_search("GDPR official text", 5)
+        b = web_search("gdpr official text", 5)  # case-normalized cache key
     assert a and b
     assert a[0]["url"] == b[0]["url"]
     assert calls["n"] == 1
@@ -153,6 +154,7 @@ def test_search_breaker_opens_after_consecutive_empty(monkeypatch: Any) -> None:
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_N", raising=False)
     monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", raising=False)
+    monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     calls = {"n": 0}
 
     def empty_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
@@ -176,6 +178,7 @@ def test_search_breaker_half_open_single_wave_then_recovers(monkeypatch: Any) ->
     clear_search_cache()
     reset_search_breaker()
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     # Zero cooldown: tripped breaker is immediately half-open (no sleeping).
     monkeypatch.setenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "0")
     seen_waves: list[bool] = []

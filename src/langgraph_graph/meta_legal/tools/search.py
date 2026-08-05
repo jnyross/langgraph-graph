@@ -6,11 +6,15 @@ Caches identical in-process queries; parallelizes multi-backend DDG attempts.
 
 from __future__ import annotations
 
+import json
 import os
+import shutil
+import subprocess
 import threading
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -58,6 +62,11 @@ _BREAKER_DEFAULT_COOLDOWN_S = 120.0
 _BREAKER_LOCK = threading.Lock()
 _BREAKER_EMPTY_STREAK = 0
 _BREAKER_OPENED_AT: float | None = None
+
+
+# Firecrawl cloud CLI availability (resolved once).
+_FIRECRAWL_CLI: bool | None = None
+_FIRECRAWL_CLI_LOCK = threading.Lock()
 
 
 def _normalize_result(item: dict[str, Any]) -> dict[str, str] | None:
@@ -235,6 +244,68 @@ def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
         if normalized:
             results.append(normalized)
         if len(results) >= max_results:
+            break
+    return _dedupe_results(results)
+
+
+def _firecrawl_cli_available() -> bool:
+    """Cache whether the ``firecrawl`` binary is on PATH."""
+    global _FIRECRAWL_CLI
+    with _FIRECRAWL_CLI_LOCK:
+        if _FIRECRAWL_CLI is None:
+            _FIRECRAWL_CLI = shutil.which("firecrawl") is not None
+        return _FIRECRAWL_CLI
+
+
+def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
+    """Search via authenticated Firecrawl cloud CLI. Never raises."""
+    q = (query or "").strip()
+    if not q:
+        return []
+    if not _firecrawl_cli_available():
+        return []
+    limit = max(1, int(max_results or 5))
+    try:
+        completed = subprocess.run(
+            ["firecrawl", "search", q, "--limit", str(limit), "--json"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except FileNotFoundError:
+        with _FIRECRAWL_CLI_LOCK:
+            _FIRECRAWL_CLI = False
+        return []
+    except Exception:
+        return []
+
+    if completed.returncode != 0:
+        return []
+
+    try:
+        payload = json.loads(completed.stdout or "")
+    except Exception:
+        return []
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    web = data.get("web") if isinstance(data, dict) else None
+    if not isinstance(web, list):
+        return []
+
+    results: list[dict[str, str]] = []
+    for item in web:
+        if not isinstance(item, dict):
+            continue
+        normalized = _normalize_result(
+            {
+                "title": item.get("title"),
+                "url": item.get("url"),
+                "snippet": item.get("description") or item.get("snippet") or "",
+            }
+        )
+        if normalized:
+            results.append(normalized)
+        if len(results) >= limit:
             break
     return _dedupe_results(results)
 
@@ -430,7 +501,8 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
 
     Provider order:
       1. Tavily when ``TAVILY_API_KEY`` is set
-      2. ddgs / duckduckgo_search if importable
+      2. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
+      3. ddgs / duckduckgo_search if importable
 
     Identical queries are served from an in-process cache within the process.
     A process-wide circuit breaker short-circuits to ``[]`` for a cooldown
@@ -454,6 +526,13 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     try:
         if os.getenv("TAVILY_API_KEY"):
             hits = _search_tavily(q, limit)
+            if hits:
+                out = hits[:limit]
+                _cache_put(q, limit, out)
+                _breaker_record(True)
+                return out
+        if _firecrawl_cli_available():
+            hits = _search_firecrawl_cli(q, limit)
             if hits:
                 out = hits[:limit]
                 _cache_put(q, limit, out)
