@@ -1099,20 +1099,47 @@ def _coerce_cell(payload: Mapping[str, Any] | ResearchCell | Any) -> ResearchCel
 
     jurisdiction = str(data.get("jurisdiction") or "").strip() or "Unknown"
     domain_raw = str(data.get("domain") or data.get("domain_id") or "").strip() or "privacy"
-    jurisdiction_id = str(data.get("jurisdiction_id") or "").strip() or slugify(
-        normalize_jurisdiction(jurisdiction)
-    )
+    # Always re-canonicalize so aliases (ca → California → california) match gold.
+    if jurisdiction != "Unknown":
+        jurisdiction = normalize_jurisdiction(jurisdiction) or jurisdiction
+    raw_jid = str(data.get("jurisdiction_id") or "").strip()
+    if raw_jid:
+        # Prefer slugifying the normalized form of whatever was supplied
+        # (handles "California", "ca", "united_states").
+        jurisdiction_id = slugify(normalize_jurisdiction(raw_jid.replace("_", " "))) or slugify(raw_jid)
+    else:
+        jurisdiction_id = slugify(normalize_jurisdiction(jurisdiction)) if jurisdiction != "Unknown" else "unknown"
+    # If label and id disagree after normalize (e.g. label California, id united_states),
+    # prefer the more specific label-derived slug when it is a known non-generic id.
+    if jurisdiction != "Unknown":
+        label_jid = slugify(normalize_jurisdiction(jurisdiction))
+        if label_jid and label_jid != jurisdiction_id:
+            # Keep label when id is a parent/generic US while label is a state.
+            if jurisdiction_id in {"united_states", "us", "usa"} and label_jid not in {
+                "united_states",
+                "us",
+                "usa",
+            }:
+                jurisdiction_id = label_jid
+            elif not raw_jid:
+                jurisdiction_id = label_jid
     domain_id = str(data.get("domain_id") or "").strip() or normalize_domain(domain_raw)
+    domain_id = normalize_domain(domain_id) or domain_id
     domain = str(data.get("domain") or domain_id).strip() or domain_id
     subject = str(data.get("subject") or "Meta").strip() or "Meta"
     cell_id = str(data.get("cell_id") or "").strip() or make_cell_id(jurisdiction_id, domain_id)
+    # Keep cell_id prefix aligned with canonical jurisdiction_id when possible.
+    if "::" in cell_id:
+        _prefix, _sep, _suffix = cell_id.partition("::")
+        if _suffix == domain_id and _prefix != jurisdiction_id:
+            cell_id = make_cell_id(jurisdiction_id, domain_id)
     status = data.get("status") or "researching"
     if status not in ("pending", "researching", "validating", "done", "error"):
         status = "researching"
 
     return ResearchCell(
         cell_id=cell_id,
-        jurisdiction=normalize_jurisdiction(jurisdiction) if jurisdiction != "Unknown" else jurisdiction,
+        jurisdiction=jurisdiction,
         jurisdiction_id=jurisdiction_id,
         domain=domain,
         domain_id=domain_id,
@@ -1345,10 +1372,14 @@ def _drafts_from_payload(
             status = str(status).strip() or None
 
         try:
+            jid = (cell.jurisdiction_id or "").strip() or slugify(
+                normalize_jurisdiction(cell.jurisdiction or "")
+            )
+            did = (cell.domain_id or "").strip() or normalize_domain(cell.domain or "")
             draft = LawRecordDraft(
                 title=title,
-                jurisdiction_id=cell.jurisdiction_id,
-                domain_id=cell.domain_id,
+                jurisdiction_id=jid,
+                domain_id=did,
                 meta_nexus=nexus,
                 meta_nexus_rationale=str(data.get("meta_nexus_rationale") or "").strip(),
                 citation=str(data.get("citation") or "").strip(),
@@ -1360,7 +1391,7 @@ def _drafts_from_payload(
                 status=status,
                 confidence=confidence,
                 worker_model=worker_model,
-                cell_id=cell.cell_id,
+                cell_id=cell.cell_id or make_cell_id(jid, did),
             )
         except Exception:
             continue

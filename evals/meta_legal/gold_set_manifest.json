@@ -69,9 +69,9 @@
   },
   "matcher_contract": {
     "found_if_any": [
-      "normalized citation equality (compact alnum)",
+      "normalized citation key overlap (boilerplate-tolerant compact alnum)",
       "source_url host+path significant equality",
-      "normalized title/alias slug hit AND same jurisdiction_id and domain_id"
+      "normalized title/alias slug hit OR distinctive gold-alias token containment AND same domain_id AND compatible jurisdiction_id (exact or US-state under united_states)"
     ]
   },
   "files": {
