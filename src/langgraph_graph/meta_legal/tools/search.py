@@ -1,14 +1,29 @@
 """Web search helpers for meta_legal research workers.
 
 Never raises: failures degrade to an empty result list.
+Caches identical in-process queries; parallelizes multi-backend DDG attempts.
 """
 
 from __future__ import annotations
 
 import os
+import threading
 import warnings
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
+
+
+class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
+    """ThreadPoolExecutor whose workers are daemons (safe process exit on hang)."""
+
+    def _adjust_thread_count(self) -> None:  # type: ignore[override]
+        super()._adjust_thread_count()
+        for t in list(getattr(self, "_threads", ())):
+            try:
+                t.daemon = True
+            except Exception:
+                pass
 
 
 # Preferred multi-engine backends for the modern ``ddgs`` package.
@@ -22,6 +37,16 @@ _DDGS_BACKENDS: tuple[str, ...] = (
 )
 # Legacy duckduckgo_search backends (kept for older installs).
 _LEGACY_BACKENDS: tuple[str, ...] = ("api", "html", "lite")
+
+# Bound each backend probe so a hung provider cannot stall the worker forever.
+_BACKEND_ATTEMPT_TIMEOUT_SEC = 5.0
+# Overall budget for one parallel backend wave (first non-empty wins).
+_BACKEND_WAVE_TIMEOUT_SEC = 6.0
+
+# In-process cache: (normalized_query, max_results) -> results
+_SEARCH_CACHE: dict[tuple[str, int], list[dict[str, str]]] = {}
+_CACHE_LOCK = threading.Lock()
+_CACHE_MAX = 256
 
 
 def _normalize_result(item: dict[str, Any]) -> dict[str, str] | None:
@@ -76,6 +101,39 @@ def _dedupe_results(results: list[dict[str, str]]) -> list[dict[str, str]]:
         seen.add(key)
         out.append(item)
     return out
+
+
+def _cache_key(query: str, max_results: int) -> tuple[str, int]:
+    return (query.strip().lower(), max(1, int(max_results or 5)))
+
+
+def _cache_get(query: str, max_results: int) -> list[dict[str, str]] | None:
+    key = _cache_key(query, max_results)
+    with _CACHE_LOCK:
+        hit = _SEARCH_CACHE.get(key)
+        if hit is None:
+            return None
+        # Return a shallow copy so callers cannot mutate the cache entry.
+        return [dict(item) for item in hit]
+
+
+def _cache_put(query: str, max_results: int, results: list[dict[str, str]]) -> None:
+    key = _cache_key(query, max_results)
+    stored = [dict(item) for item in results]
+    with _CACHE_LOCK:
+        if len(_SEARCH_CACHE) >= _CACHE_MAX and key not in _SEARCH_CACHE:
+            # Drop an arbitrary oldest-ish entry (FIFO via insertion order).
+            try:
+                _SEARCH_CACHE.pop(next(iter(_SEARCH_CACHE)))
+            except StopIteration:
+                pass
+        _SEARCH_CACHE[key] = stored
+
+
+def clear_search_cache() -> None:
+    """Clear the in-process search cache (tests / long-running process hygiene)."""
+    with _CACHE_LOCK:
+        _SEARCH_CACHE.clear()
 
 
 def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
@@ -211,11 +269,30 @@ def _collect_normalized(raw: list[dict[str, Any]], limit: int) -> list[dict[str,
     return _dedupe_results(results)
 
 
+def _backend_attempt(
+    ddgs_cls: Any,
+    query: str,
+    *,
+    fetch_n: int,
+    backend: str | None,
+    limit: int,
+) -> list[dict[str, str]]:
+    raw = _ddg_text_once(
+        ddgs_cls,
+        query,
+        max_results=fetch_n,
+        backend=backend,
+        region="wt-wt",
+    )
+    return _collect_normalized(raw, limit)
+
+
 def _search_ddg(query: str, max_results: int) -> list[dict[str, str]]:
     """Search via ``ddgs`` (preferred) or legacy ``duckduckgo_search``.
 
-    Tries multiple backends/regions, retries once on empty, de-dupes by URL.
-    Never raises.
+    Tries multiple backends in parallel (small pool), retries once on empty,
+    de-dupes by URL. Never raises. Bounded by wave/attempt timeouts so a hung
+    backend cannot stall a research cell forever.
     """
     ddgs_cls = _import_ddgs_class()
     if ddgs_cls is None:
@@ -234,31 +311,53 @@ def _search_ddg(query: str, max_results: int) -> list[dict[str, str]]:
     # Over-fetch slightly so de-dupe still fills the limit.
     fetch_n = max(limit, min(limit * 2, 10))
 
-    collected: list[dict[str, str]] = []
-    for backend in backends:
-        raw = _ddg_text_once(
-            ddgs_cls,
-            query,
-            max_results=fetch_n,
-            backend=backend,
-            region="wt-wt",
-        )
-        collected = _collect_normalized(raw, limit)
-        if collected:
-            return collected[:limit]
+    def _run_backends(backend_list: list[str | None]) -> list[dict[str, str]]:
+        if not backend_list:
+            return []
+        # Parallel backend probes; first non-empty wins (cancel remaining).
+        # Daemon workers + non-waiting shutdown so hung providers cannot pin exit.
+        workers = min(4, len(backend_list))
+        pool: ThreadPoolExecutor = _DaemonThreadPoolExecutor(max_workers=workers)
+        try:
+            futures = {
+                pool.submit(
+                    _backend_attempt,
+                    ddgs_cls,
+                    query,
+                    fetch_n=fetch_n,
+                    backend=backend,
+                    limit=limit,
+                ): backend
+                for backend in backend_list
+            }
+            try:
+                for fut in as_completed(futures, timeout=_BACKEND_WAVE_TIMEOUT_SEC):
+                    try:
+                        hits = fut.result(timeout=_BACKEND_ATTEMPT_TIMEOUT_SEC) or []
+                    except FuturesTimeout:
+                        hits = []
+                    except Exception:
+                        hits = []
+                    if hits:
+                        for other in futures:
+                            if other is not fut:
+                                other.cancel()
+                        return hits[:limit]
+            except FuturesTimeout:
+                for fut in futures:
+                    fut.cancel()
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+        return []
 
-    # Retry once on total empty (transient empty pages / rate limits).
-    for backend in backends[:3]:
-        raw = _ddg_text_once(
-            ddgs_cls,
-            query,
-            max_results=fetch_n,
-            backend=backend,
-            region="wt-wt",
-        )
-        collected = _collect_normalized(raw, limit)
-        if collected:
-            return collected[:limit]
+    collected = _run_backends(backends)
+    if collected:
+        return collected[:limit]
+
+    # Single short retry on the first two backends only (transient empties).
+    collected = _run_backends(backends[:2])
+    if collected:
+        return collected[:limit]
 
     return []
 
@@ -270,6 +369,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
       1. Tavily when ``TAVILY_API_KEY`` is set
       2. ddgs / duckduckgo_search if importable
 
+    Identical queries are served from an in-process cache within the process.
     Never raises; returns ``[]`` on any failure or empty input.
     """
     q = (query or "").strip()
@@ -277,11 +377,20 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
         return []
     limit = max(1, int(max_results or 5))
 
+    cached = _cache_get(q, limit)
+    if cached is not None:
+        return cached[:limit]
+
     try:
         if os.getenv("TAVILY_API_KEY"):
             hits = _search_tavily(q, limit)
             if hits:
-                return hits[:limit]
-        return _search_ddg(q, limit)[:limit]
+                out = hits[:limit]
+                _cache_put(q, limit, out)
+                return out
+        out = _search_ddg(q, limit)[:limit]
+        # Cache empty results too to avoid hammering dead backends for same query.
+        _cache_put(q, limit, out)
+        return out
     except Exception:
         return []

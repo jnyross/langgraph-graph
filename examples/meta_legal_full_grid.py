@@ -9,7 +9,7 @@ Usage:
   uv run python examples/meta_legal_full_grid.py --limit-jurisdictions 3 --domains privacy
 
 Env:
-  META_LEGAL_MAX_CONCURRENCY  default 8
+  META_LEGAL_MAX_CONCURRENCY  default 12
   OPENROUTER_API_KEY          required for live research workers
   DOSSIER_ROOT                default data/dossiers
 """

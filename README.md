@@ -110,7 +110,7 @@ uv run python examples/meta_legal_full_grid.py --dry-run
 # subset for debugging
 uv run python examples/meta_legal_full_grid.py --levels country,supranational --limit-jurisdictions 5
 
-# full live run (expensive) — concurrency via META_LEGAL_MAX_CONCURRENCY (default 8)
+# full live run (expensive) — concurrency via META_LEGAL_MAX_CONCURRENCY (default 12)
 uv run python examples/meta_legal_full_grid.py
 ```
 

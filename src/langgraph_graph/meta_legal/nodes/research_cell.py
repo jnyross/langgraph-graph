@@ -7,6 +7,7 @@ and/or empty ``drafts`` list updates for the Annotated reducers.
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Mapping
 
@@ -24,6 +25,19 @@ from langgraph_graph.meta_legal.models import (
 )
 from langgraph_graph.meta_legal.tools.fetch import fetch_url as default_fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search as default_web_search
+
+
+class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
+    """Fetch pool with daemon workers so hung GETs cannot pin process exit."""
+
+    def _adjust_thread_count(self) -> None:  # type: ignore[override]
+        super()._adjust_thread_count()
+        for t in list(getattr(self, "_threads", ())):
+            try:
+                t.daemon = True
+            except Exception:
+                pass
+
 
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
@@ -1642,8 +1656,9 @@ def run_research_cell(
     fetch_fn: FetchFn | None = None,
     llm: Any | None = None,
     max_results_per_query: int = 5,
-    max_urls: int = 5,
+    max_urls: int = 7,
     max_chars_per_page: int = 8000,
+    max_fetch_workers: int = 5,
 ) -> dict[str, list[Any]]:
     """Core research worker with injectable tools/LLM (for tests).
 
@@ -1760,35 +1775,53 @@ def run_research_cell(
             seen_urls.add(key)
             if len(urls) >= max_urls + len(seed_urls):
                 break
-        urls = urls[: max(max_urls, min(len(urls), max_urls + 2))]
-    # --- fetch ---
-    fetched_blocks: list[str] = []
-    for url in urls:
+        # Seed-heavy cells may keep a couple extra primary URLs beyond max_urls.
+        urls = urls[: max(max_urls, min(len(urls), max_urls + 3))]
+
+    # --- fetch (concurrent; preserve URL order in context) ---
+    def _fetch_one(url: str) -> tuple[str, str, str | None]:
+        """Return (url, text, error_message). Never raises."""
         try:
             text = fetch(url, max_chars_per_page) or ""
         except TypeError:
             try:
                 text = fetch(url) or ""  # type: ignore[misc,call-arg]
             except Exception as exc:
-                errors.append(
-                    CellError(
-                        cell_id=cell_id,
-                        message=f"fetch failed for {url}: {exc}",
-                        stage="research",
-                    )
-                )
-                text = ""
+                return url, "", f"fetch failed for {url}: {exc}"
         except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"fetch failed for {url}: {exc}",
-                    stage="research",
-                )
-            )
-            text = ""
-        if text.strip():
-            fetched_blocks.append(f"URL: {url}\n{text.strip()}")
+            return url, "", f"fetch failed for {url}: {exc}"
+        return url, text, None
+
+    fetched_by_url: dict[str, str] = {}
+    workers = max(1, min(int(max_fetch_workers or 5), len(urls) or 1))
+    if urls:
+        with _DaemonThreadPoolExecutor(max_workers=workers) as pool:
+            future_map = {pool.submit(_fetch_one, url): url for url in urls}
+            for fut in as_completed(future_map):
+                url = future_map[fut]
+                try:
+                    got_url, text, err_msg = fut.result()
+                except Exception as exc:
+                    errors.append(
+                        CellError(
+                            cell_id=cell_id,
+                            message=f"fetch failed for {url}: {exc}",
+                            stage="research",
+                        )
+                    )
+                    continue
+                if err_msg:
+                    errors.append(
+                        CellError(cell_id=cell_id, message=err_msg, stage="research")
+                    )
+                if (text or "").strip():
+                    fetched_by_url[got_url] = text.strip()
+
+    fetched_blocks: list[str] = [
+        f"URL: {url}\n{fetched_by_url[url]}"
+        for url in urls
+        if url in fetched_by_url
+    ]
 
     # Always include search snippets so LLM can still work if all fetches fail.
     snippet_lines = []

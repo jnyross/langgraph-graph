@@ -333,7 +333,7 @@ def test_partial_fetch_failure_still_yields_drafts() -> None:
     assert any("broken.example" in err.message for err in errors)
 
 
-def test_research_cell_never_raises_on_total_tool_failure() -> None:
+def test_research_cell_never_raises_on_total_tool_failure(monkeypatch: Any) -> None:
     def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
         raise RuntimeError("search backend down")
 
@@ -359,7 +359,19 @@ def test_research_cell_never_raises_on_total_tool_failure() -> None:
     assert out["drafts"] == []
     assert out.get("cell_errors")
 
-    # Node entry must also soft-fail (no inject; uses real tools, still no raise).
+    # Node entry must also soft-fail. Patch tools so the test stays offline.
+    monkeypatch.setattr(
+        "langgraph_graph.meta_legal.nodes.research_cell.default_web_search",
+        search_fn,
+    )
+    monkeypatch.setattr(
+        "langgraph_graph.meta_legal.nodes.research_cell.default_fetch_url",
+        fetch_fn,
+    )
+    monkeypatch.setattr(
+        "langgraph_graph.meta_legal.nodes.research_cell.get_llm",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("llm unavailable")),
+    )
     wrapped = research_cell({"cell_id": "y::privacy", "jurisdiction": "Y", "domain": "privacy"})
     assert "drafts" in wrapped
     assert isinstance(wrapped.get("drafts"), list)
