@@ -33,11 +33,12 @@ def test_fetch_via_firecrawl_happy_path_truncates(monkeypatch: Any) -> None:
     assert kwargs.args[0].endswith("/v2/scrape")
     assert kwargs.kwargs["json"]["formats"] == ["markdown"]
     assert kwargs.kwargs["json"]["onlyMainContent"] is True
-    assert kwargs.kwargs["json"]["timeout"] == 12000
-    assert kwargs.kwargs["timeout"] == 15.0
+    assert kwargs.kwargs["json"]["timeout"] == 8000
+    assert kwargs.kwargs["timeout"] == 10.0
 
 
 def test_fetch_url_auto_falls_through_to_httpx(monkeypatch: Any) -> None:
+    fetch_mod.clear_fetch_cache()
     monkeypatch.setenv("META_LEGAL_FETCH_BACKEND", "auto")
     monkeypatch.setattr(fetch_mod, "_fetch_via_firecrawl", lambda *_a, **_k: "")
     monkeypatch.setattr(fetch_mod, "_fetch_via_httpx", lambda *_a, **_k: "fallback")
@@ -45,6 +46,7 @@ def test_fetch_url_auto_falls_through_to_httpx(monkeypatch: Any) -> None:
 
 
 def test_fetch_url_httpx_backend_skips_firecrawl(monkeypatch: Any) -> None:
+    fetch_mod.clear_fetch_cache()
     monkeypatch.setenv("META_LEGAL_FETCH_BACKEND", "httpx")
     calls: list[str] = []
 

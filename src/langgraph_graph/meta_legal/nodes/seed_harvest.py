@@ -8,6 +8,7 @@ when the model/search path flakes under load.
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Iterable, Mapping, Sequence
 from urllib.parse import quote_plus, unquote, urlparse
 
@@ -126,7 +127,7 @@ def _official_aggregator_seeds(cell: ResearchCell, instruments: Sequence[str]) -
             continue
         seen.add(u)
         out.append(u)
-    return out[:8]
+    return out[:4]
 
 
 def _display_title(name: str) -> str:
@@ -335,10 +336,42 @@ def harvest_seed_instruments(
     if not pairs:
         return []
 
+    # Cap drafts per cell — enough for coverage, avoids stampeding fetches.
+    try:
+        max_pairs = max(3, int(__import__("os").getenv("META_LEGAL_HARVEST_MAX_PAIRS", "") or "8"))
+    except ValueError:
+        max_pairs = 8
+    pairs = pairs[:max_pairs]
+
     jid = (resolved.jurisdiction_id or slugify(resolved.jurisdiction or "")).strip()
     did = (resolved.domain_id or normalize_domain(resolved.domain or "")).strip()
     cell_id = (resolved.cell_id or "").strip()
-    cache = { _norm_url(k): v for k, v in (fetched_cache or {}).items() if v }
+    cache = {_norm_url(k): v for k, v in (fetched_cache or {}).items() if v}
+
+    # Parallel-prefetch unique URLs missing from cache (process fetch cache still applies).
+    need: list[str] = []
+    seen_need: set[str] = set()
+    for _name, url in pairs:
+        uk = _norm_url(url)
+        if not uk or uk in cache or uk in seen_need:
+            continue
+        if url in (fetched_cache or {}) and (fetched_cache or {}).get(url):
+            cache[uk] = str((fetched_cache or {}).get(url) or "")
+            continue
+        seen_need.add(uk)
+        need.append(url)
+    if need and fetch_fn is not None:
+        workers = max(1, min(8, len(need)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = {pool.submit(_safe_fetch, fetch_fn, url, max_chars_fetch): url for url in need}
+            for fut in as_completed(futs):
+                url = futs[fut]
+                try:
+                    text = fut.result() or ""
+                except Exception:
+                    text = ""
+                if text:
+                    cache[_norm_url(url)] = text
 
     drafts: list[LawRecordDraft] = []
     seen_pair: set[tuple[str, str]] = set()
@@ -356,10 +389,6 @@ def harvest_seed_instruments(
             text = (cache[uk] or "").strip()
         elif url in (fetched_cache or {}):
             text = str(fetched_cache.get(url) or "").strip()
-        else:
-            text = _safe_fetch(fetch_fn, url, max_chars_fetch)
-            if text:
-                cache[uk] = text
 
         excerpt = text[: max(0, int(max_chars_excerpt))].strip()
         source_type = "primary" if _is_official_host(url) else "secondary"

@@ -1886,9 +1886,9 @@ def run_research_cell(
     fetch_fn: FetchFn | None = None,
     llm: Any | None = None,
     max_results_per_query: int = 5,
-    max_urls: int = 7,
+    max_urls: int = 6,
     max_chars_per_page: int = 8000,
-    max_fetch_workers: int = 5,
+    max_fetch_workers: int = 12,
 ) -> dict[str, list[Any]]:
     """Core research worker with injectable tools/LLM (for tests).
 
@@ -2018,16 +2018,19 @@ def run_research_cell(
     # Ensure seeds remain in the fetch list even if ranking dropped them.
     if seed_urls:
         seen_urls = {u.split("#", 1)[0].rstrip("/") for u in urls}
+        # Prefer a few high-value seeds beyond search hits (rest still harvested).
+        seed_budget = min(4, len(seed_urls))
+        added = 0
         for seed in seed_urls:
+            if added >= seed_budget:
+                break
             key = seed.split("#", 1)[0].rstrip("/")
             if key in seen_urls:
                 continue
             urls.append(seed)
             seen_urls.add(key)
-            if len(urls) >= max_urls + len(seed_urls):
-                break
-        # Seed-heavy cells may keep a couple extra primary URLs beyond max_urls.
-        urls = urls[: max(max_urls, min(len(urls), max_urls + 3))]
+            added += 1
+        urls = urls[: max(max_urls, min(len(urls), max_urls + seed_budget))]
 
     # --- fetch (concurrent; preserve URL order in context) ---
     def _fetch_one(url: str) -> tuple[str, str, str | None]:
@@ -2044,7 +2047,7 @@ def run_research_cell(
         return url, text, None
 
     fetched_by_url: dict[str, str] = {}
-    workers = max(1, min(int(max_fetch_workers or 5), len(urls) or 1))
+    workers = max(1, min(int(max_fetch_workers or 12), len(urls) or 1))
     if urls:
         with _DaemonThreadPoolExecutor(max_workers=workers) as pool:
             future_map = {pool.submit(_fetch_one, url): url for url in urls}

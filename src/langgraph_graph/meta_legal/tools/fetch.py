@@ -34,6 +34,19 @@ _FIRECRAWL_SEM: threading.Semaphore | None = None
 _FIRECRAWL_SEM_LOCK = threading.Lock()
 _FIRECRAWL_SEM_SIZE: int | None = None
 
+# Process-wide fetch memo (positive + negative). Same statute URL is requested
+# by many cells (EU inheritance, shared federal seeds); never re-scrape.
+_FETCH_CACHE: dict[tuple[str, int], str] = {}
+_FETCH_CACHE_LOCK = threading.Lock()
+_FETCH_CACHE_MAX = 4096
+_HTTPX_ONLY_HOST_SUFFIXES: Final[tuple[str, ...]] = (
+    "wipo.int",
+    "fao.org",
+    "unctad.org",
+    "wikipedia.org",
+    "eur-lex.europa.eu",
+)
+
 
 def _html_to_text(html: str) -> str:
     """Rough HTML → plain text: drop scripts/styles, strip tags, collapse space."""
@@ -193,13 +206,29 @@ def _firecrawl_semaphore() -> threading.Semaphore:
 
 
 def _firecrawl_skip_host(url: str) -> bool:
-    """Hosts known to fail local Firecrawl (bot walls); skip straight to httpx."""
+    """Hosts that should skip Firecrawl (bot walls or httpx-is-enough)."""
     try:
         host = (urlparse(url).netloc or "").lower()
     except Exception:
         return False
-    # Verified SCRAPE_ALL_ENGINES_FAILED on self-hosted playwright stack.
-    return host == "eur-lex.europa.eu" or host.endswith(".eur-lex.europa.eu")
+    if not host:
+        return False
+    for suffix in _HTTPX_ONLY_HOST_SUFFIXES:
+        if host == suffix or host.endswith("." + suffix):
+            return True
+    return False
+
+
+def _cache_key(url: str, max_chars: int) -> tuple[str, int]:
+    # Normalize fragment; bucket by max_chars so larger windows don't reuse short.
+    u = (url or "").strip().split("#", 1)[0]
+    return (u, int(max_chars or 0))
+
+
+def clear_fetch_cache() -> None:
+    """Clear process-wide fetch memo (tests / long-running process hygiene)."""
+    with _FETCH_CACHE_LOCK:
+        _FETCH_CACHE.clear()
 
 
 def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
@@ -224,7 +253,7 @@ def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
     acquired = False
     try:
         # Bound queue wait under load (sem size + this ≈ worst-case gate).
-        acquired = sem.acquire(timeout=5.0)
+        acquired = sem.acquire(timeout=3.0)
         if not acquired:
             return ""
         response = httpx.post(
@@ -233,9 +262,9 @@ def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
                 "url": target,
                 "formats": ["markdown"],
                 "onlyMainContent": True,
-                "timeout": 12000,
+                "timeout": 8000,
             },
-            timeout=15.0,
+            timeout=10.0,
         )
         if response.status_code != 200:
             return ""
@@ -303,7 +332,8 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
       - ``httpx``: thread-local httpx client only (exp004 path)
 
     Firecrawl concurrency gated by ``META_LEGAL_FIRECRAWL_MAX_PAR`` (default 20).
-    Never raises; returns ``""`` on failure or empty input.
+    Process-wide memo caches successes and empty failures so parallel cells do
+    not re-scrape the same statute URL. Never raises; returns ``""`` on failure.
     """
     target = (url or "").strip()
     if not target:
@@ -312,15 +342,27 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
         return ""
 
     limit = max(0, int(max_chars if max_chars is not None else 12000))
+    key = _cache_key(target, limit)
+    with _FETCH_CACHE_LOCK:
+        if key in _FETCH_CACHE:
+            return _FETCH_CACHE[key]
+
     backend = _fetch_backend()
+    if backend == "httpx" or (backend == "auto" and _firecrawl_skip_host(target)):
+        text = _fetch_via_httpx(target, limit)
+    elif backend == "firecrawl":
+        text = _fetch_via_firecrawl(target, limit)
+    else:
+        # auto: firecrawl first, httpx fallback
+        text = _fetch_via_firecrawl(target, limit)
+        if not text:
+            text = _fetch_via_httpx(target, limit)
 
-    if backend == "httpx":
-        return _fetch_via_httpx(target, limit)
-    if backend == "firecrawl":
-        return _fetch_via_firecrawl(target, limit)
-
-    # auto: firecrawl first, httpx fallback
-    text = _fetch_via_firecrawl(target, limit)
-    if text:
-        return text
-    return _fetch_via_httpx(target, limit)
+    with _FETCH_CACHE_LOCK:
+        if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX and key not in _FETCH_CACHE:
+            try:
+                _FETCH_CACHE.pop(next(iter(_FETCH_CACHE)))
+            except StopIteration:
+                pass
+        _FETCH_CACHE[key] = text
+    return text
