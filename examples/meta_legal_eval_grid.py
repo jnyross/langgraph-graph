@@ -143,6 +143,10 @@ def _append_log(log_path: Path, row: dict[str, Any]) -> None:
 
 
 def _score_dossier(gold_path: Path, dossier_path: str) -> dict[str, Any]:
+    # Ensure repo root is importable when invoked as a script path.
+    root = str(REPO_ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
     from evals.meta_legal.score_recall import score_recall, summarize
 
     result = score_recall(gold_path, Path(dossier_path))
