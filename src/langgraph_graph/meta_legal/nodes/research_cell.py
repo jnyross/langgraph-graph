@@ -47,10 +47,10 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
 
-# Speed campaign defaults: tight caps; harvest floor preserves coverage.
-DEFAULT_MAX_QUERIES = 3
-DEFAULT_SEARCH_BUDGET_S = 4.0
-_SEARCH_QUERY_WORKERS = 6
+# Speed campaign defaults: tight caps; rich-excerpt harvest preserves quality.
+DEFAULT_MAX_QUERIES = 2
+DEFAULT_SEARCH_BUDGET_S = 3.0
+_SEARCH_QUERY_WORKERS = 4
 
 
 def _max_queries() -> int:
