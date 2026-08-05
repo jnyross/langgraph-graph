@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -246,9 +245,7 @@ def test_rejected_without_cell_id_goes_to_all(tmp_path: Path) -> None:
     assert payload["cell_id"] is None
 
 
-def test_write_dossier_node_uses_env_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_dossier_node_uses_env_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOSSIER_ROOT", str(tmp_path))
     record = _law(law_id="node-1", title="Node Law")
     result = write_dossier(

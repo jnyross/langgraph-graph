@@ -10,9 +10,10 @@ from __future__ import annotations
 import json
 import os
 from collections import defaultdict
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 from uuid import uuid4
 
 from langgraph_graph.meta_legal.models import (
@@ -40,7 +41,7 @@ def safe_fs_id(value: str) -> str:
 
 
 def _default_run_id() -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"{ts}_{uuid4().hex[:8]}"
 
 

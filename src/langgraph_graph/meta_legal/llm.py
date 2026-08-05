@@ -32,10 +32,7 @@ def get_llm(model: str | None = None, **kwargs: Any):
     from langchain_openai import ChatOpenAI
 
     resolved_model = (
-        model
-        or os.getenv("OPENROUTER_MODEL")
-        or os.getenv("DEEPSEEK_MODEL")
-        or DEFAULT_MODEL
+        model or os.getenv("OPENROUTER_MODEL") or os.getenv("DEEPSEEK_MODEL") or DEFAULT_MODEL
     )
     api_key = (
         kwargs.pop("api_key", None)

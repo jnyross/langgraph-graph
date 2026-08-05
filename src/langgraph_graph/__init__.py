@@ -6,8 +6,8 @@ Public API:
     AgentState     -> typed graph state.
 """
 
-from langgraph_graph.state import AgentState
 from langgraph_graph.graph import build_graph, graph
+from langgraph_graph.state import AgentState
 
 __all__ = ["AgentState", "build_graph", "graph"]
 __version__ = "0.1.0"

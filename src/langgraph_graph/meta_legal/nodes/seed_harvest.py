@@ -8,11 +8,17 @@ when the model/search path flakes under load.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
 from urllib.parse import quote_plus, unquote, urlparse
 
-from langgraph_graph.meta_legal.models import LawRecordDraft, ResearchCell, normalize_domain, slugify
+from langgraph_graph.meta_legal.models import (
+    LawRecordDraft,
+    ResearchCell,
+    normalize_domain,
+    slugify,
+)
 
 FetchFn = Callable[[str, int], str]
 
@@ -110,9 +116,7 @@ def _official_aggregator_seeds(cell: ResearchCell, instruments: Sequence[str]) -
         urls.append(f"https://www.fao.org/faolex/results/en/?search=y&query={q_j}")
         # UNCTAD competition law info (domain-relevant but safe for all)
         if domain in {"competition", "privacy", "youth_safety", "ip", "accessibility"}:
-            urls.append(
-                "https://unctad.org/topic/competition-and-consumer-protection/legislation"
-            )
+            urls.append("https://unctad.org/topic/competition-and-consumer-protection/legislation")
     for name in list(instruments)[:3]:
         title = _display_title(name)
         if not title or not jname:
@@ -317,7 +321,11 @@ def harvest_seed_instruments(
                 seed_urls_for_cell,
             )
 
-            inst = list(instruments) if instruments is not None else list(_instruments_for_cell(resolved))
+            inst = (
+                list(instruments)
+                if instruments is not None
+                else list(_instruments_for_cell(resolved))
+            )
             seeds = list(seed_urls) if seed_urls is not None else list(seed_urls_for_cell(resolved))
         else:
             inst = list(instruments)
@@ -387,7 +395,7 @@ def harvest_seed_instruments(
         text = ""
         if uk in cache:
             text = (cache[uk] or "").strip()
-        elif url in (fetched_cache or {}):
+        elif fetched_cache is not None and url in fetched_cache:
             text = str(fetched_cache.get(url) or "").strip()
 
         excerpt = text[: max(0, int(max_chars_excerpt))].strip()

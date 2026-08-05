@@ -4,13 +4,16 @@ Soft-fail contract: never raise into the graph. Failures become ``cell_errors``
 and/or empty ``drafts`` list updates for the Annotated reducers. Seed harvest
 always floors drafts when curated instruments/URLs exist (exp_006).
 """
+
 import json
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
+from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, Mapping
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,12 +27,12 @@ from langgraph_graph.meta_legal.models import (
     normalize_jurisdiction,
     slugify,
 )
-from langgraph_graph.meta_legal.tools.fetch import fetch_url as default_fetch_url
-from langgraph_graph.meta_legal.tools.search import web_search as default_web_search
 from langgraph_graph.meta_legal.nodes.seed_harvest import (
     harvest_seed_instruments,
     merge_drafts,
 )
+from langgraph_graph.meta_legal.tools.fetch import fetch_url as default_fetch_url
+from langgraph_graph.meta_legal.tools.search import web_search as default_web_search
 
 
 class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
@@ -37,11 +40,11 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 
     def _adjust_thread_count(self) -> None:  # type: ignore[override]
         super()._adjust_thread_count()
+        import contextlib
+
         for t in list(getattr(self, "_threads", ())):
-            try:
+            with contextlib.suppress(Exception):
                 t.daemon = True
-            except Exception:
-                pass
 
 
 SearchFn = Callable[[str, int], list[dict[str, str]]]
@@ -212,7 +215,7 @@ _JURISDICTION_DOMAIN_INSTRUMENTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("european_union", "youth_safety"): (
         "Digital Services Act DSA Regulation (EU) 2022/2065",
         "Audiovisual Media Services Directive AVMSD 2010/13/EU",
-        "Child Sexual Abuse Regulation Proposal Framework CSAM Regulation proposal COM/2022/209 CELEX 52022PC0209",
+        "Child Sexual Abuse Regulation Proposal Framework CSAM Regulation proposal COM/2022/209 CELEX 52022PC0209",  # noqa: E501
         "GDPR children personal data Article 8",
     ),
     ("european_union", "ip"): (
@@ -246,8 +249,8 @@ _JURISDICTION_DOMAIN_INSTRUMENTS: dict[tuple[str, str], tuple[str, ...]] = {
         "COPPA Children's Online Privacy Protection Act",
         "COPPA FTC Rule 16 CFR Part 312",
         "Communications Decency Act Section 230 CDA 230 47 USC 230",
-        "NCMEC CyberTipline reporting obligations 18 USC 2258A Federal Child Sexual Exploitation Reporting Duties",
-        "TAKE IT DOWN Act Tools to Address Known Exploitation by Immobilizing Technological Deepfakes on Websites and Networks Act Pub. L. 119-12",
+        "NCMEC CyberTipline reporting obligations 18 USC 2258A Federal Child Sexual Exploitation Reporting Duties",  # noqa: E501
+        "TAKE IT DOWN Act Tools to Address Known Exploitation by Immobilizing Technological Deepfakes on Websites and Networks Act Pub. L. 119-12",  # noqa: E501
     ),
     ("united_states", "ip"): (
         "Digital Millennium Copyright Act DMCA",
@@ -258,7 +261,7 @@ _JURISDICTION_DOMAIN_INSTRUMENTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("united_states", "accessibility"): (
         "Americans with Disabilities Act ADA Title III",
         "Rehabilitation Act Section 508 ICT accessibility 29 USC 794d",
-        "CVAA Twenty-First Century Communications and Video Accessibility Act 21st Century Communications and Video Accessibility Act",
+        "CVAA Twenty-First Century Communications and Video Accessibility Act 21st Century Communications and Video Accessibility Act",  # noqa: E501
         "Section 508 electronic and information technology accessibility standards",
     ),
     ("united_kingdom", "privacy"): (
@@ -386,7 +389,7 @@ _JURISDICTION_DOMAIN_INSTRUMENTS: dict[tuple[str, str], tuple[str, ...]] = {
         "CADE digital markets",
     ),
     ("brazil", "youth_safety"): (
-        "ECA Estatuto da Criança e do Adolescente Brazil Law 8069/1990 Child and Adolescent Statute",
+        "ECA Estatuto da Criança e do Adolescente Brazil Law 8069/1990 Child and Adolescent Statute",  # noqa: E501
         "Marco Civil da Internet child protection",
         "Brazil online child safety",
     ),
@@ -481,7 +484,7 @@ _JURISDICTION_DOMAIN_INSTRUMENTS: dict[tuple[str, str], tuple[str, ...]] = {
         "PIPC Korea privacy",
     ),
     ("south_korea", "youth_safety"): (
-        "Act on Promotion of Information and Communications Network Utilization and Information Protection Network Act Korea ICNA",
+        "Act on Promotion of Information and Communications Network Utilization and Information Protection Network Act Korea ICNA",  # noqa: E501
         "Korea youth protection online Network Act illegal content",
         "Network Act Korea youth safety",
     ),
@@ -1011,9 +1014,7 @@ _JURISDICTION_SITE_HINTS: dict[str, tuple[str, ...]] = {
         "site:leg.state.fl.us",
         "site:myfloridalegal.com",
     ),
-    "arkansas": (
-        "site:arkleg.state.ar.us",
-    ),
+    "arkansas": ("site:arkleg.state.ar.us",),
     "new_york": (
         "site:nysenate.gov",
         "site:nyassembly.gov",
@@ -1104,9 +1105,9 @@ class _ExtractedLawItem(BaseModel):
     source_url: str = ""
     source_type: Literal["primary", "secondary"] = "secondary"
     excerpt: str = ""
-    meta_nexus: Literal[
-        "named_party", "platform_obligation", "sector_rule", "other"
-    ] = "platform_obligation"
+    meta_nexus: Literal["named_party", "platform_obligation", "sector_rule", "other"] = (
+        "platform_obligation"
+    )
     meta_nexus_rationale: str = ""
     language: str = "en"
     effective_date: str | None = None
@@ -1183,7 +1184,10 @@ def _coerce_cell(payload: Mapping[str, Any] | ResearchCell | Any) -> ResearchCel
     if nested is not None:
         nested_map = _as_mapping(nested)
         if nested_map:
-            data = {**nested_map, **{k: v for k, v in data.items() if k != "cell" and v not in (None, "")}}
+            data = {
+                **nested_map,
+                **{k: v for k, v in data.items() if k != "cell" and v not in (None, "")},
+            }
 
     jurisdiction = str(data.get("jurisdiction") or "").strip() or "Unknown"
     domain_raw = str(data.get("domain") or data.get("domain_id") or "").strip() or "privacy"
@@ -1194,22 +1198,31 @@ def _coerce_cell(payload: Mapping[str, Any] | ResearchCell | Any) -> ResearchCel
     if raw_jid:
         # Prefer slugifying the normalized form of whatever was supplied
         # (handles "California", "ca", "united_states").
-        jurisdiction_id = slugify(normalize_jurisdiction(raw_jid.replace("_", " "))) or slugify(raw_jid)
+        jurisdiction_id = slugify(normalize_jurisdiction(raw_jid.replace("_", " "))) or slugify(
+            raw_jid
+        )
     else:
-        jurisdiction_id = slugify(normalize_jurisdiction(jurisdiction)) if jurisdiction != "Unknown" else "unknown"
+        jurisdiction_id = (
+            slugify(normalize_jurisdiction(jurisdiction))
+            if jurisdiction != "Unknown"
+            else "unknown"
+        )
     # If label and id disagree after normalize (e.g. label California, id united_states),
     # prefer the more specific label-derived slug when it is a known non-generic id.
     if jurisdiction != "Unknown":
         label_jid = slugify(normalize_jurisdiction(jurisdiction))
-        if label_jid and label_jid != jurisdiction_id:
+        if label_jid and label_jid != jurisdiction_id:  # noqa: SIM102
             # Keep label when id is a parent/generic US while label is a state.
-            if jurisdiction_id in {"united_states", "us", "usa"} and label_jid not in {
-                "united_states",
-                "us",
-                "usa",
-            }:
-                jurisdiction_id = label_jid
-            elif not raw_jid:
+            if (
+                jurisdiction_id in {"united_states", "us", "usa"}
+                and label_jid
+                not in {
+                    "united_states",
+                    "us",
+                    "usa",
+                }
+                or not raw_jid
+            ):
                 jurisdiction_id = label_jid
     domain_id = str(data.get("domain_id") or "").strip() or normalize_domain(domain_raw)
     domain_id = normalize_domain(domain_id) or domain_id
@@ -1277,17 +1290,13 @@ def _seed_lookup_keys(jid: str, domain_id: str) -> list[tuple[str, str]]:
     if jid in {"us", "usa", "united-states-of-america"}:
         keys.append(("united_states", domain_id))
     # EU members, EEA/EFTA peers, and Council of Europe inherit EU primaries.
-    if (
-        _is_eu_member_jurisdiction(jid)
-        or jid
-        in {
-            "council_of_europe",
-            "norway",
-            "iceland",
-            "liechtenstein",
-            "switzerland",
-        }
-    ):
+    if _is_eu_member_jurisdiction(jid) or jid in {
+        "council_of_europe",
+        "norway",
+        "iceland",
+        "liechtenstein",
+        "switzerland",
+    }:
         keys.append(("european_union", domain_id))
     return list(dict.fromkeys(keys))
 
@@ -1426,7 +1435,10 @@ def _host_score(url: str) -> int:
             score += 3
     if any(ext in u for ext in (".pdf", "/eli/", "/legal-content/", "/legislation", "/ukpga/")):
         score += 1
-    if any(bad in u for bad in ("pinterest.", "facebook.com/posts", "twitter.com", "x.com/", "reddit.com")):
+    if any(
+        bad in u
+        for bad in ("pinterest.", "facebook.com/posts", "twitter.com", "x.com/", "reddit.com")
+    ):
         score -= 2
     # Demote Meta marketing / product hosts heavily unless already official.
     if any(host in u for host in _META_HOST_DEMOTE):
@@ -1613,7 +1625,9 @@ def _drafts_from_payload(
     return drafts
 
 
-def _build_extract_messages(cell: ResearchCell, context: str, *, retry: bool = False) -> list[dict[str, str]]:
+def _build_extract_messages(
+    cell: ResearchCell, context: str, *, retry: bool = False
+) -> list[dict[str, str]]:
     system = _load_system_prompt(cell)
     if retry:
         user = (
@@ -1643,7 +1657,9 @@ def _build_extract_messages(cell: ResearchCell, context: str, *, retry: bool = F
 
 def _is_rate_limit_error(exc: BaseException) -> bool:
     text = f"{type(exc).__name__} {exc}".lower()
-    return "429" in text or "rate limit" in text or "rate_limit" in text or "too many requests" in text
+    return (
+        "429" in text or "rate limit" in text or "rate_limit" in text or "too many requests" in text
+    )
 
 
 def _llm_timeout_s() -> float:
@@ -1707,8 +1723,7 @@ def _call_llm(
 def _is_timeout_error(exc: BaseException) -> bool:
     text = f"{type(exc).__name__} {exc}".lower()
     return (
-        isinstance(exc, TimeoutError)
-        or isinstance(exc, FuturesTimeout)
+        isinstance(exc, (TimeoutError, FuturesTimeout))
         or "exceeded" in text
         or "timeout" in text
         or "timed out" in text
@@ -1733,7 +1748,9 @@ def _try_structured_output(
         {},
     ):
         try:
-            structured = binder(_ExtractedLawList, **kwargs) if kwargs else binder(_ExtractedLawList)
+            structured = (
+                binder(_ExtractedLawList, **kwargs) if kwargs else binder(_ExtractedLawList)
+            )
             break
         except TypeError:
             # Older signatures may not accept method=
@@ -1771,10 +1788,13 @@ def _try_json_mode(
     bound = None
     for fmt in (
         {"type": "json_object"},
-        {"type": "json_schema", "json_schema": {
-            "name": "law_drafts",
-            "schema": _ExtractedLawList.model_json_schema(),
-        }},
+        {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "law_drafts",
+                "schema": _ExtractedLawList.model_json_schema(),
+            },
+        },
     ):
         try:
             bound = binder(response_format=fmt)
@@ -1862,7 +1882,6 @@ def _invoke_llm_for_drafts(
     return []
 
 
-
 def _resolve_worker_model(llm: Any | None) -> str:
     env_model = (
         os.getenv("OPENROUTER_MODEL")
@@ -1906,7 +1925,9 @@ def run_research_cell(
         return {
             "drafts": [],
             "cell_errors": [
-                CellError(cell_id="unknown", message=f"invalid cell payload: {exc}", stage="research")
+                CellError(
+                    cell_id="unknown", message=f"invalid cell payload: {exc}", stage="research"
+                )
             ],
         }
 
@@ -1981,16 +2002,14 @@ def run_research_cell(
     hits_by_query: dict[str, list[dict[str, str]]] = {}
     try:
         if queries and not skip_search:
-            pool = _DaemonThreadPoolExecutor(
-                max_workers=min(_SEARCH_QUERY_WORKERS, len(queries))
-            )
+            pool = _DaemonThreadPoolExecutor(max_workers=min(_SEARCH_QUERY_WORKERS, len(queries)))
             try:
-                futures = {pool.submit(_search_one, q): q for q in queries}
+                futures: dict[Any, str] = {pool.submit(_search_one, q): q for q in queries}
                 try:
                     for fut in as_completed(futures, timeout=budget_s):
                         query = futures[fut]
                         try:
-                            hits, err_msg = fut.result()
+                            hits, err_msg = fut.result()  # type: ignore[misc]
                         except Exception as exc:
                             hits, err_msg = [], f"search failed for query {query!r}: {exc}"
                         if err_msg:
@@ -2038,7 +2057,6 @@ def run_research_cell(
         errors.append(
             CellError(cell_id=cell_id, message=f"search loop failed: {exc}", stage="research")
         )
-
 
     for seed in seed_urls:
         search_hits.append(
@@ -2108,16 +2126,12 @@ def run_research_cell(
                     )
                     continue
                 if err_msg:
-                    errors.append(
-                        CellError(cell_id=cell_id, message=err_msg, stage="research")
-                    )
+                    errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
                 if (text or "").strip():
                     fetched_by_url[got_url] = text.strip()
 
     fetched_blocks: list[str] = [
-        f"URL: {url}\n{fetched_by_url[url]}"
-        for url in urls
-        if url in fetched_by_url
+        f"URL: {url}\n{fetched_by_url[url]}" for url in urls if url in fetched_by_url
     ]
 
     # Always include search snippets so LLM can still work if all fetches fail.
@@ -2235,7 +2249,6 @@ def run_research_cell(
     return result
 
 
-
 def research_cell(state: dict[str, Any] | ResearchCell | Any) -> dict[str, list[Any]]:
     """LangGraph node entry: research one Send() cell payload.
 
@@ -2247,15 +2260,13 @@ def research_cell(state: dict[str, Any] | ResearchCell | Any) -> dict[str, list[
     except Exception as exc:  # absolute soft-fail belt
         data = _as_mapping(state)
         nested = _as_mapping(data.get("cell")) if data.get("cell") is not None else {}
-        cell_id = str(
-            data.get("cell_id")
-            or nested.get("cell_id")
-            or "unknown"
-        )
+        cell_id = str(data.get("cell_id") or nested.get("cell_id") or "unknown")
         return {
             "drafts": [],
             "cell_errors": [
-                CellError(cell_id=cell_id, message=f"research_cell crashed: {exc}", stage="research")
+                CellError(
+                    cell_id=cell_id, message=f"research_cell crashed: {exc}", stage="research"
+                )
             ],
         }
 

@@ -33,9 +33,7 @@ def ingest_input(state: ResearchState) -> dict[str, Any]:
     raw_domains = list(state.get("domains") or [])
     subject = (state.get("subject") or "Meta").strip() or "Meta"
     explicit_cells = [
-        dict(cell)
-        for cell in (state.get("explicit_cells") or [])
-        if isinstance(cell, dict)
+        dict(cell) for cell in (state.get("explicit_cells") or []) if isinstance(cell, dict)
     ]
 
     # When only explicit cells are provided, derive list fields for ResearchInput.
@@ -102,7 +100,6 @@ def ingest_input(state: ResearchState) -> dict[str, Any]:
     }
 
 
-
 def fanout_cells(state: ResearchState) -> list[Send] | str:
     """Fan out one Send per planned cell, or skip workers when empty/error.
 
@@ -140,12 +137,12 @@ def aggregate_findings(state: ResearchState) -> dict[str, Any]:
 def _assemble_graph() -> StateGraph:
     """Build the StateGraph topology (nodes/edges only; not compiled)."""
     g = StateGraph(ResearchState)
-    g.add_node("ingest_input", ingest_input)
-    g.add_node("plan_cells", plan_cells)
-    g.add_node("research_cell", research_cell)
-    g.add_node("validate_cell", validate_cell)
-    g.add_node("aggregate_findings", aggregate_findings)
-    g.add_node("write_dossier", write_dossier)
+    g.add_node("ingest_input", ingest_input)  # type: ignore[type-var]
+    g.add_node("plan_cells", plan_cells)  # type: ignore[type-var]
+    g.add_node("research_cell", research_cell)  # type: ignore[type-var]
+    g.add_node("validate_cell", validate_cell)  # type: ignore[type-var]
+    g.add_node("aggregate_findings", aggregate_findings)  # type: ignore[type-var]
+    g.add_node("write_dossier", write_dossier)  # type: ignore[type-var]
 
     g.add_edge(START, "ingest_input")
     g.add_edge("ingest_input", "plan_cells")

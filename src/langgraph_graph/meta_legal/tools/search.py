@@ -6,6 +6,7 @@ Caches identical in-process queries; parallelizes multi-backend DDG attempts.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -25,10 +26,8 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
     def _adjust_thread_count(self) -> None:  # type: ignore[override]
         super()._adjust_thread_count()
         for t in list(getattr(self, "_threads", ())):
-            try:
+            with contextlib.suppress(Exception):
                 t.daemon = True
-            except Exception:
-                pass
 
 
 # Preferred multi-engine backends for the modern ``ddgs`` package.
@@ -147,10 +146,8 @@ def _cache_put(query: str, max_results: int, results: list[dict[str, str]]) -> N
     with _CACHE_LOCK:
         if len(_SEARCH_CACHE) >= _CACHE_MAX and key not in _SEARCH_CACHE:
             # Drop an arbitrary oldest-ish entry (FIFO via insertion order).
-            try:
+            with contextlib.suppress(StopIteration):
                 _SEARCH_CACHE.pop(next(iter(_SEARCH_CACHE)))
-            except StopIteration:
-                pass
         _SEARCH_CACHE[key] = stored
 
 
@@ -171,7 +168,9 @@ def _breaker_cooldown_s() -> float:
     try:
         return max(
             0.0,
-            float(os.getenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "") or _BREAKER_DEFAULT_COOLDOWN_S),
+            float(
+                os.getenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "") or _BREAKER_DEFAULT_COOLDOWN_S
+            ),
         )
     except ValueError:
         return _BREAKER_DEFAULT_COOLDOWN_S
@@ -196,7 +195,7 @@ def _breaker_record(success: bool) -> None:
             _BREAKER_OPENED_AT = None
             return
         _BREAKER_EMPTY_STREAK += 1
-        if _BREAKER_EMPTY_STREAK >= _breaker_n():
+        if _breaker_n() <= _BREAKER_EMPTY_STREAK:
             _BREAKER_OPENED_AT = time.monotonic()
 
 
@@ -272,7 +271,7 @@ def _firecrawl_search_semaphore() -> threading.Semaphore:
     except ValueError:
         size = 40
     with _FIRECRAWL_SEARCH_SEM_LOCK:
-        if _FIRECRAWL_SEARCH_SEM is None or _FIRECRAWL_SEARCH_SEM_SIZE != size:
+        if _FIRECRAWL_SEARCH_SEM is None or size != _FIRECRAWL_SEARCH_SEM_SIZE:
             _FIRECRAWL_SEARCH_SEM = threading.Semaphore(size)
             _FIRECRAWL_SEARCH_SEM_SIZE = size
         return _FIRECRAWL_SEARCH_SEM
@@ -308,10 +307,8 @@ def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
         return []
     finally:
         if acquired:
-            try:
+            with contextlib.suppress(Exception):
                 sem.release()
-            except Exception:
-                pass
 
     if completed is None or completed.returncode != 0:
         return []
@@ -380,7 +377,7 @@ def _ddg_text_once(
             return list(client.text(query, **call_kwargs) or [])
         except TypeError:
             # Older signatures: keywords=..., no region/backend, etc.
-            slim = {"max_results": max_results}
+            slim: dict[str, Any] = {"max_results": max_results}
             if backend:
                 slim["backend"] = backend
             try:
@@ -411,10 +408,8 @@ def _ddg_text_once(
                 finally:
                     close = getattr(client, "close", None)
                     if callable(close):
-                        try:
+                        with contextlib.suppress(Exception):
                             close()
-                        except Exception:
-                            pass
     except Exception:
         return []
     return []
@@ -467,10 +462,7 @@ def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> l
     mod = getattr(ddgs_cls, "__module__", "") or ""
     is_modern = mod.startswith("ddgs") or "ddgs" in mod
     backends: list[str | None]
-    if is_modern:
-        backends = list(_DDGS_BACKENDS)
-    else:
-        backends = list(_LEGACY_BACKENDS) + [None]
+    backends = list(_DDGS_BACKENDS) if is_modern else list(_LEGACY_BACKENDS) + [None]
 
     limit = max(1, int(max_results or 5))
     # Over-fetch slightly so de-dupe still fills the limit.

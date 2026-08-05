@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from langgraph_graph.meta_legal.nodes.research_cell import run_research_cell
 from langgraph_graph.meta_legal.models import ResearchCell
+from langgraph_graph.meta_legal.nodes.research_cell import run_research_cell
 from langgraph_graph.meta_legal.run_config import DEFAULT_MAX_CONCURRENCY, max_concurrency
 from langgraph_graph.meta_legal.tools import fetch as fetch_mod
 from langgraph_graph.meta_legal.tools import search as search_mod
@@ -330,9 +329,7 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
 def test_eval_grid_limit_cells_and_max_concurrency_flags() -> None:
     from examples.meta_legal_eval_grid import _parse_args
 
-    args = _parse_args(
-        ["--limit-cells", "3", "--max-concurrency", "12", "--dry-run"]
-    )
+    args = _parse_args(["--limit-cells", "3", "--max-concurrency", "12", "--dry-run"])
     assert args.limit_cells == 3
     assert args.max_concurrency == 12
     assert args.dry_run is True

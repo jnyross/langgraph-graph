@@ -14,8 +14,9 @@ Public API::
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 # repo root: src/langgraph_graph/meta_legal/jurisdictions.py → parents[3]
 _REPO_ROOT = Path(__file__).resolve().parents[3]

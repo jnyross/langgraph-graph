@@ -6,6 +6,7 @@ Thread-safe for concurrent fetches within a cell worker.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import threading
@@ -19,9 +20,7 @@ _MAX_ATTEMPTS: Final[int] = 2  # initial try + one retry
 FIRECRAWL_API_URL_ENV: Final[str] = "FIRECRAWL_API_URL"
 FETCH_BACKEND_ENV: Final[str] = "META_LEGAL_FETCH_BACKEND"
 FIRECRAWL_MAX_PAR_ENV: Final[str] = "META_LEGAL_FIRECRAWL_MAX_PAR"
-_SCRIPT_STYLE_RE = re.compile(
-    r"(?is)<(script|style|noscript|svg|iframe)\b[^>]*>.*?</\1\s*>"
-)
+_SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript|svg|iframe)\b[^>]*>.*?</\1\s*>")
 _TAG_RE = re.compile(r"(?s)<[^>]+>")
 _WS_RE = re.compile(r"[ \t\f\v]+")
 _BLANK_RE = re.compile(r"\n{3,}")
@@ -105,14 +104,11 @@ def _close_thread_client() -> None:
     client = getattr(_THREAD_LOCAL, "client", None)
     if client is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         client.close()
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         delattr(_THREAD_LOCAL, "client")
-    except Exception:
-        _THREAD_LOCAL.client = None
+    _THREAD_LOCAL.client = None
 
 
 def _response_to_text(response: Any, limit: int) -> str:
@@ -199,7 +195,7 @@ def _firecrawl_semaphore() -> threading.Semaphore:
     except ValueError:
         size = 20
     with _FIRECRAWL_SEM_LOCK:
-        if _FIRECRAWL_SEM is None or _FIRECRAWL_SEM_SIZE != size:
+        if _FIRECRAWL_SEM is None or size != _FIRECRAWL_SEM_SIZE:
             _FIRECRAWL_SEM = threading.Semaphore(size)
             _FIRECRAWL_SEM_SIZE = size
         return _FIRECRAWL_SEM
@@ -284,10 +280,8 @@ def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
         return ""
     finally:
         if acquired:
-            try:
+            with contextlib.suppress(Exception):
                 sem.release()
-            except Exception:
-                pass
 
 
 def _fetch_via_httpx(url: str, max_chars: int) -> str:
@@ -364,9 +358,7 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
     if text:
         with _FETCH_CACHE_LOCK:
             if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX and key not in _FETCH_CACHE:
-                try:
+                with contextlib.suppress(StopIteration):
                     _FETCH_CACHE.pop(next(iter(_FETCH_CACHE)))
-                except StopIteration:
-                    pass
             _FETCH_CACHE[key] = text
     return text

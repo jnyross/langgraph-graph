@@ -221,4 +221,3 @@ def test_plan_cells_empty_explicit_falls_back_to_cartesian() -> None:
     cells = result["cells"]
     assert len(cells) == 1
     assert cells[0].cell_id == "india::accessibility"
-

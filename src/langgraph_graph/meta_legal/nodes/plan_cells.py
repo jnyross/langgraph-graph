@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from langgraph_graph.meta_legal.models import (
     ResearchCell,
@@ -96,7 +97,11 @@ def expand_explicit_cells(
         if not jurisdiction:
             continue
         # Prefer human labels; if caller only passed a slug id, title-case it.
-        if jurisdiction == str(raw_jurisdiction).strip() and "_" in jurisdiction and jurisdiction == jurisdiction.lower():
+        if (
+            jurisdiction == str(raw_jurisdiction).strip()
+            and "_" in jurisdiction
+            and jurisdiction == jurisdiction.lower()
+        ):
             jurisdiction = jurisdiction.replace("_", " ").replace("-", " ").title()
             jurisdiction = normalize_jurisdiction(jurisdiction) or jurisdiction
 
@@ -139,4 +144,3 @@ def plan_cells(state: ResearchState) -> dict[str, Any]:
             subject=subject,
         )
     return {"cells": cells}
-

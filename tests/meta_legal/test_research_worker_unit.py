@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langgraph_graph.meta_legal.models import CellError, LawRecordDraft, ResearchCell
+from langgraph_graph.meta_legal.models import LawRecordDraft, ResearchCell
 from langgraph_graph.meta_legal.nodes.research_cell import (
     build_search_queries,
     research_cell,
@@ -185,7 +185,9 @@ def test_empty_search_still_harvests_aggregator_floor() -> None:
     assert all(d.source_url.startswith("http") for d in result["drafts"])
     assert any("wipo.int" in d.source_url or "fao.org" in d.source_url for d in result["drafts"])
     # Soft warnings ok; hard "search returned no results" only when drafts empty.
-    assert not any(err.message == "search returned no results" for err in result.get("cell_errors", []))
+    assert not any(
+        err.message == "search returned no results" for err in result.get("cell_errors", [])
+    )
 
 
 def test_build_search_queries_eu_privacy_instrument_first() -> None:
@@ -376,5 +378,3 @@ def test_research_cell_never_raises_on_total_tool_failure(monkeypatch: Any) -> N
     wrapped = research_cell({"cell_id": "y::privacy", "jurisdiction": "Y", "domain": "privacy"})
     assert "drafts" in wrapped
     assert isinstance(wrapped.get("drafts"), list)
-
-

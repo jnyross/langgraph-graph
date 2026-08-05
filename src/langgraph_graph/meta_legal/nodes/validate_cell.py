@@ -8,7 +8,8 @@ via ``prompts/validate.md``; v1 keeps validation pure and offline-testable.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from langgraph_graph.meta_legal.models import (
     LawRecord,
@@ -142,7 +143,7 @@ def _rejection_reasons(
     nexus = (draft.meta_nexus or "").strip()
     if not nexus:
         reasons.append("missing_meta_nexus")
-    elif slugify(nexus) not in _META_NEXUS_VALUES and nexus not in _META_NEXUS_VALUES:
+    elif slugify(nexus) not in _META_NEXUS_VALUES and nexus not in _META_NEXUS_VALUES:  # noqa: SIM102
         # Allow exact tags; also accept already-slug forms.
         # Unknown free-text nexus is treated as missing/unclear.
         if slugify(nexus) not in {slugify(v) for v in _META_NEXUS_VALUES}:
@@ -151,16 +152,12 @@ def _rejection_reasons(
     if cell is not None:
         draft_j = _norm_id(draft.jurisdiction_id, kind="jurisdiction")
         cell_j = _norm_id(cell.jurisdiction_id, kind="jurisdiction")
-        if draft_j and cell_j and draft_j != cell_j:
-            reasons.append("jurisdiction_mismatch")
-        elif not draft_j and cell_j:
+        if draft_j and cell_j and draft_j != cell_j or not draft_j and cell_j:
             reasons.append("jurisdiction_mismatch")
 
         draft_d = _norm_id(draft.domain_id, kind="domain")
         cell_d = _norm_id(cell.domain_id, kind="domain")
-        if draft_d and cell_d and draft_d != cell_d:
-            reasons.append("domain_mismatch")
-        elif not draft_d and cell_d:
+        if draft_d and cell_d and draft_d != cell_d or not draft_d and cell_d:
             reasons.append("domain_mismatch")
 
     return reasons
@@ -197,7 +194,14 @@ def validate_drafts(
             )
             if isinstance(item, Mapping):
                 # Best-effort partial fill for debugging.
-                for key in ("title", "jurisdiction_id", "domain_id", "source_url", "cell_id", "meta_nexus"):
+                for key in (
+                    "title",
+                    "jurisdiction_id",
+                    "domain_id",
+                    "source_url",
+                    "cell_id",
+                    "meta_nexus",
+                ):
                     val = item.get(key)
                     if isinstance(val, str) and val:
                         setattr(fallback, key, val)
@@ -270,11 +274,7 @@ def validate_cell(state: dict[str, Any] | Mapping[str, Any]) -> dict[str, Any]:
     # If we know the cell, only validate drafts for that cell when mixed.
     if cell is not None and drafts:
         cell_id = cell.cell_id
-        filtered = [
-            d
-            for d in drafts
-            if _draft_cell_id(d) in ("", cell_id)
-        ]
+        filtered = [d for d in drafts if _draft_cell_id(d) in ("", cell_id)]
         # Prefer filtered set when any draft carries a cell_id match or empty;
         # if every draft belongs to other cells, validate none for this cell.
         if any(_draft_cell_id(d) == cell_id for d in drafts) or any(

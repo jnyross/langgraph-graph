@@ -43,7 +43,10 @@ def plan_node(state: AgentState) -> dict[str, Any]:
     )
     raw = llm.invoke(prompt).content
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
-    return {"plan": steps, "messages": state.messages + [{"role": "assistant", "content": str(raw)}]}
+    return {
+        "plan": steps,
+        "messages": state.messages + [{"role": "assistant", "content": str(raw)}],
+    }
 
 
 def act_node(state: AgentState) -> dict[str, Any]:
@@ -54,7 +57,11 @@ def act_node(state: AgentState) -> dict[str, Any]:
     decision; approved actions execute the bound tool, rejected ones are skipped.
     """
     plan_summary = "; ".join(state.plan) or state.input
-    action = {"id": "act-1", "tool": "send_message", "args": {"to": "me", "body": plan_summary}}
+    action: dict[str, Any] = {
+        "id": "act-1",
+        "tool": "send_message",
+        "args": {"to": "me", "body": plan_summary},
+    }
 
     # interrupt() returns whatever the human supplies at resume time.
     decision = interrupt(
@@ -65,12 +72,12 @@ def act_node(state: AgentState) -> dict[str, Any]:
     )
 
     granted = bool(decision) if decision is not None else False
-    approvals = {**state.approvals, action["id"]: granted}
+    approvals: dict[str, bool] = {**state.approvals, action["id"]: granted}
     output = ""
     if granted:
         tool = next((t for t in ALL_TOOLS if t.name == action["tool"]), None)
         if tool is not None:
-            output = tool.invoke(action["args"])
+            output = tool.invoke(action["args"])  # type: ignore[arg-type]
     else:
         output = "Action rejected by human; nothing executed."
     return {"approvals": approvals, "pending_action": None, "output": output}

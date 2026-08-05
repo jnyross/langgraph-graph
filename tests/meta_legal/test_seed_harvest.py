@@ -46,7 +46,9 @@ def test_harvest_seed_instruments_eu_privacy_mocked_fetch() -> None:
 
     assert len(drafts) >= 1
     assert all(isinstance(d, LawRecordDraft) for d in drafts)
-    assert any("GDPR" in d.title or "2016/679" in d.title or "Data Protection" in d.title for d in drafts)
+    assert any(
+        "GDPR" in d.title or "2016/679" in d.title or "Data Protection" in d.title for d in drafts
+    )
     assert any("eur-lex" in d.source_url for d in drafts)
     assert any((d.excerpt or "").strip() for d in drafts)
     assert all(d.meta_nexus == "platform_obligation" for d in drafts)
@@ -85,9 +87,10 @@ def test_pair_instruments_and_seeds_gdpr_match() -> None:
     pairs = pair_instruments_and_seeds(instruments, seeds)
     assert len(pairs) >= 2
     by_url = {u: n for n, u in pairs}
-    assert "2016/679" in by_url["https://eur-lex.europa.eu/eli/reg/2016/679/oj"] or "GDPR" in by_url[
-        "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
-    ]
+    assert (
+        "2016/679" in by_url["https://eur-lex.europa.eu/eli/reg/2016/679/oj"]
+        or "GDPR" in by_url["https://eur-lex.europa.eu/eli/reg/2016/679/oj"]
+    )
 
 
 def test_merge_drafts_dedupes_by_url_and_title() -> None:
@@ -134,7 +137,6 @@ def test_merge_drafts_dedupes_by_url_and_title() -> None:
     assert a.source_url in urls
     assert c.source_url in urls
     assert b.source_url not in urls
-
 
 
 def test_run_research_cell_empty_search_and_llm_still_harvests() -> None:

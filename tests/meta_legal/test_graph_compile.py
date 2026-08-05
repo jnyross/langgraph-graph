@@ -29,14 +29,17 @@ def test_build_graph_false_has_no_checkpointer() -> None:
 
 
 def test_starter_domains() -> None:
-    assert STARTER_DOMAINS == frozenset(
-        {
-            "privacy",
-            "competition",
-            "youth_safety",
-            "ip",
-            "accessibility",
-        }
+    assert (
+        frozenset(
+            {
+                "privacy",
+                "competition",
+                "youth_safety",
+                "ip",
+                "accessibility",
+            }
+        )
+        == STARTER_DOMAINS
     )
 
 

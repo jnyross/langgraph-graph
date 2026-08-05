@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from langgraph_graph.meta_legal.tools import fetch as fetch_mod
 from langgraph_graph.meta_legal.tools import search as search_mod

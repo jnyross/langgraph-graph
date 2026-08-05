@@ -9,7 +9,6 @@ import pytest
 
 from langgraph_graph.meta_legal.models import make_cell_id
 
-
 REQUIRED_NODES = {
     "ingest_input",
     "plan_cells",
@@ -183,9 +182,7 @@ def test_mocked_integration_two_cells_writes_dossier(
 
     cells = list(result.get("cells") or [])
     assert len(cells) == 2
-    cell_ids = {
-        (c.cell_id if hasattr(c, "cell_id") else c.get("cell_id")) for c in cells
-    }
+    cell_ids = {(c.cell_id if hasattr(c, "cell_id") else c.get("cell_id")) for c in cells}
     assert make_cell_id("european_union", "privacy") in cell_ids or any(
         "privacy" in str(cid) for cid in cell_ids
     )
