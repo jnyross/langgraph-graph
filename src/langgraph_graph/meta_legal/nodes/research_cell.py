@@ -1564,7 +1564,19 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
     return "429" in text or "rate limit" in text or "rate_limit" in text or "too many requests" in text
 
 
-def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
+def _llm_timeout_s() -> float:
+    try:
+        return max(5.0, float(os.getenv("META_LEGAL_LLM_TIMEOUT_S", "") or 60.0))
+    except ValueError:
+        return 60.0
+
+
+def _call_llm(
+    llm: Any,
+    messages: list[dict[str, str]],
+    *,
+    timeout_s: float | None = None,
+) -> Any:
     """Invoke chat model; on OpenRouter/HTTP 429 retry once with short backoff.
 
     Also enforces a hard wall-clock timeout around each invoke (thread future)
@@ -1572,18 +1584,7 @@ def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
     reads under high concurrency.
     """
 
-    def _timeout_s() -> float:
-        try:
-            return max(
-                5.0,
-                float(os.getenv("META_LEGAL_LLM_TIMEOUT_S", "") or 60.0),
-            )
-        except ValueError:
-            return 60.0
-
-    def _invoke_once() -> Any:
-        timeout = _timeout_s()
-
+    def _invoke_once(timeout: float) -> Any:
         def _raw() -> Any:
             try:
                 return llm.invoke(messages)
@@ -1602,19 +1603,42 @@ def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
 
+    timeout = float(timeout_s) if timeout_s is not None else _llm_timeout_s()
+    timeout = max(1.0, timeout)
+
     try:
-        return _invoke_once()
+        return _invoke_once(timeout)
     except Exception as first:
         if not _is_rate_limit_error(first):
             raise RuntimeError(f"llm invoke failed: {first}") from first
+        # Only retry 429 if budget remains.
+        remaining = timeout - 1.5
+        if remaining < 1.0:
+            raise RuntimeError(f"llm invoke failed: {first}") from first
         time.sleep(1.5)
         try:
-            return _invoke_once()
+            return _invoke_once(remaining)
         except Exception as second:
             raise RuntimeError(f"llm invoke failed after 429 retry: {second}") from second
 
 
-def _try_structured_output(llm: Any, messages: list[dict[str, str]]) -> Any | None:
+def _is_timeout_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__} {exc}".lower()
+    return (
+        isinstance(exc, TimeoutError)
+        or isinstance(exc, FuturesTimeout)
+        or "exceeded" in text
+        or "timeout" in text
+        or "timed out" in text
+    )
+
+
+def _try_structured_output(
+    llm: Any,
+    messages: list[dict[str, str]],
+    *,
+    timeout_s: float | None = None,
+) -> Any | None:
     """Prefer ChatOpenAI.with_structured_output when available (OpenRouter-compatible)."""
     binder = getattr(llm, "with_structured_output", None)
     if not callable(binder):
@@ -1645,12 +1669,19 @@ def _try_structured_output(llm: Any, messages: list[dict[str, str]]) -> Any | No
             return None
         return None
     try:
-        return _call_llm(structured, messages)
-    except Exception:
+        return _call_llm(structured, messages, timeout_s=timeout_s)
+    except Exception as exc:
+        if _is_timeout_error(exc):
+            raise
         return None
 
 
-def _try_json_mode(llm: Any, messages: list[dict[str, str]]) -> Any | None:
+def _try_json_mode(
+    llm: Any,
+    messages: list[dict[str, str]],
+    *,
+    timeout_s: float | None = None,
+) -> Any | None:
     """Fallback: OpenAI-compatible response_format json_object when supported."""
     binder = getattr(llm, "bind", None)
     if not callable(binder):
@@ -1671,8 +1702,10 @@ def _try_json_mode(llm: Any, messages: list[dict[str, str]]) -> Any | None:
     if bound is None:
         return None
     try:
-        return _call_llm(bound, messages)
-    except Exception:
+        return _call_llm(bound, messages, timeout_s=timeout_s)
+    except Exception as exc:
+        if _is_timeout_error(exc):
+            raise
         return None
 
 
@@ -1686,49 +1719,64 @@ def _invoke_llm_for_drafts(
     """Extract drafts via structured output → JSON mode → text parse, with one empty retry.
 
     Never raises; empty list on total failure (caller records cell_errors).
+    Honours a single wall-clock budget (``META_LEGAL_LLM_TIMEOUT_S``, default 60s)
+    across all attempts so multi-path fallback cannot stack timeouts.
     """
     messages = _build_extract_messages(cell, context, retry=False)
+    deadline = time.monotonic() + _llm_timeout_s()
 
     def _parse_response(response: Any) -> list[LawRecordDraft]:
         payload = _payload_from_structured(response)
         return _drafts_from_payload(payload, cell=cell, worker_model=worker_model)
 
-    # 1) structured output (preferred)
-    response = _try_structured_output(llm, messages)
-    if response is not None:
+    def _remaining() -> float:
+        return max(0.0, deadline - time.monotonic())
+
+    def _attempt(call: Callable[[], Any]) -> list[LawRecordDraft] | None:
+        """Run one LLM path; None means try next, list (maybe empty) means stop."""
+        if _remaining() < 1.0:
+            return []
+        try:
+            response = call()
+        except Exception as exc:
+            # Hard timeout → do not cascade into more attempts.
+            if _is_timeout_error(exc):
+                return []
+            return None
+        if response is None:
+            return None
         drafts = _parse_response(response)
-        if drafts:
-            return drafts
+        return drafts if drafts else None
+
+    # 1) structured output (preferred)
+    got = _attempt(lambda: _try_structured_output(llm, messages, timeout_s=_remaining()))
+    if isinstance(got, list):
+        return got
 
     # 2) JSON mode / response_format
-    response = _try_json_mode(llm, messages)
-    if response is not None:
-        drafts = _parse_response(response)
-        if drafts:
-            return drafts
+    got = _attempt(lambda: _try_json_mode(llm, messages, timeout_s=_remaining()))
+    if isinstance(got, list):
+        return got
 
     # 3) plain text invoke + JSON parse
-    try:
-        response = _call_llm(llm, messages)
-        drafts = _parse_response(response)
-        if drafts:
-            return drafts
-    except Exception:
-        drafts = []
+    got = _attempt(lambda: _call_llm(llm, messages, timeout_s=_remaining()))
+    if isinstance(got, list):
+        return got
 
     # 4) one automatic retry with shorter "JSON array only" prompt
-    retry_messages = _build_extract_messages(cell, context, retry=True)
-    try:
-        # Prefer lightweight paths on retry: json mode then plain text.
-        response = _try_json_mode(llm, retry_messages)
-        if response is None:
-            response = _call_llm(llm, retry_messages)
-        drafts = _parse_response(response)
-        if drafts:
-            return drafts
-    except Exception:
+    if _remaining() < 1.0:
         return []
+    retry_messages = _build_extract_messages(cell, context, retry=True)
 
+    def _retry_call() -> Any:
+        response = _try_json_mode(llm, retry_messages, timeout_s=_remaining())
+        if response is None:
+            response = _call_llm(llm, retry_messages, timeout_s=_remaining())
+        return response
+
+    got = _attempt(_retry_call)
+    if isinstance(got, list):
+        return got
     return []
 
 

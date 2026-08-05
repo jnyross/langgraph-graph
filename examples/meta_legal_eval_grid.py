@@ -279,4 +279,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    code = main()
+    # Daemon LLM/httpx threads can keep the interpreter alive after Done
+    # (CLOSE_WAIT TLS reads). Force-exit so supervised evals actually finish.
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+    os._exit(code)
