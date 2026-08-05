@@ -192,13 +192,27 @@ def _firecrawl_semaphore() -> threading.Semaphore:
         return _FIRECRAWL_SEM
 
 
+def _firecrawl_skip_host(url: str) -> bool:
+    """Hosts known to fail local Firecrawl (bot walls); skip straight to httpx."""
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except Exception:
+        return False
+    # Verified SCRAPE_ALL_ENGINES_FAILED on self-hosted playwright stack.
+    return host == "eur-lex.europa.eu" or host.endswith(".eur-lex.europa.eu")
+
+
 def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
     """POST local/self-hosted Firecrawl ``/v2/scrape``; never raises.
 
     Returns truncated markdown on success, else ``""``.
+    Fail-fast timeouts (12s scrape / 15s HTTP) so auto mode can fall through
+    to httpx without stacking a 30s+ hang on every blocked URL.
     """
     target = (url or "").strip()
     if not target:
+        return ""
+    if _firecrawl_skip_host(target):
         return ""
     limit = max(0, int(max_chars if max_chars is not None else 12000))
     try:
@@ -209,17 +223,19 @@ def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
     sem = _firecrawl_semaphore()
     acquired = False
     try:
-        sem.acquire()
-        acquired = True
+        # Bound queue wait under load (sem size + this ≈ worst-case gate).
+        acquired = sem.acquire(timeout=5.0)
+        if not acquired:
+            return ""
         response = httpx.post(
             f"{_firecrawl_api_url()}/v2/scrape",
             json={
                 "url": target,
                 "formats": ["markdown"],
                 "onlyMainContent": True,
-                "timeout": 30000,
+                "timeout": 12000,
             },
-            timeout=35.0,
+            timeout=15.0,
         )
         if response.status_code != 200:
             return ""

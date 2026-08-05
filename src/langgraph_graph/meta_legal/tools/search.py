@@ -67,6 +67,10 @@ _BREAKER_OPENED_AT: float | None = None
 # Firecrawl cloud CLI availability (resolved once).
 _FIRECRAWL_CLI: bool | None = None
 _FIRECRAWL_CLI_LOCK = threading.Lock()
+_FIRECRAWL_SEARCH_MAX_PAR_ENV = "META_LEGAL_FIRECRAWL_SEARCH_MAX_PAR"
+_FIRECRAWL_SEARCH_SEM: threading.Semaphore | None = None
+_FIRECRAWL_SEARCH_SEM_LOCK = threading.Lock()
+_FIRECRAWL_SEARCH_SEM_SIZE: int | None = None
 
 
 def _normalize_result(item: dict[str, Any]) -> dict[str, str] | None:
@@ -257,6 +261,20 @@ def _firecrawl_cli_available() -> bool:
         return _FIRECRAWL_CLI
 
 
+def _firecrawl_search_semaphore() -> threading.Semaphore:
+    """Limit concurrent ``firecrawl search`` subprocesses (default 12)."""
+    global _FIRECRAWL_SEARCH_SEM, _FIRECRAWL_SEARCH_SEM_SIZE
+    try:
+        size = max(1, int(os.getenv(_FIRECRAWL_SEARCH_MAX_PAR_ENV) or "12"))
+    except ValueError:
+        size = 12
+    with _FIRECRAWL_SEARCH_SEM_LOCK:
+        if _FIRECRAWL_SEARCH_SEM is None or _FIRECRAWL_SEARCH_SEM_SIZE != size:
+            _FIRECRAWL_SEARCH_SEM = threading.Semaphore(size)
+            _FIRECRAWL_SEARCH_SEM_SIZE = size
+        return _FIRECRAWL_SEARCH_SEM
+
+
 def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
     """Search via authenticated Firecrawl cloud CLI. Never raises."""
     q = (query or "").strip()
@@ -265,12 +283,19 @@ def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
     if not _firecrawl_cli_available():
         return []
     limit = max(1, int(max_results or 5))
+    sem = _firecrawl_search_semaphore()
+    acquired = False
+    completed: subprocess.CompletedProcess[str] | None = None
     try:
+        # Don't queue forever under cell stampede; budget owns wall-clock.
+        acquired = sem.acquire(timeout=8.0)
+        if not acquired:
+            return []
         completed = subprocess.run(
             ["firecrawl", "search", q, "--limit", str(limit), "--json"],
             capture_output=True,
             text=True,
-            timeout=20,
+            timeout=12,
         )
     except FileNotFoundError:
         with _FIRECRAWL_CLI_LOCK:
@@ -278,8 +303,14 @@ def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
         return []
     except Exception:
         return []
+    finally:
+        if acquired:
+            try:
+                sem.release()
+            except Exception:
+                pass
 
-    if completed.returncode != 0:
+    if completed is None or completed.returncode != 0:
         return []
 
     try:
