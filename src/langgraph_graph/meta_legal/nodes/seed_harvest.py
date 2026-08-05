@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from typing import Any
 from urllib.parse import quote_plus, unquote, urlparse
 
@@ -20,6 +20,7 @@ from langgraph_graph.meta_legal.models import (
     normalize_domain,
     slugify,
 )
+from langgraph_graph.meta_legal.tools._pool import DaemonThreadPoolExecutor
 
 FetchFn = Callable[[str, int], str]
 
@@ -368,7 +369,7 @@ def harvest_seed_instruments(
         need.append(url)
     if need and fetch_fn is not None:
         workers = max(1, min(8, len(need)))
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with DaemonThreadPoolExecutor(max_workers=workers) as pool:
             futs = {pool.submit(_safe_fetch, fetch_fn, url, max_chars_fetch): url for url in need}
             for fut in as_completed(futs):
                 url = futs[fut]
