@@ -1974,6 +1974,44 @@ def run_research_cell(
             pre_pool.shutdown(wait=False, cancel_futures=True)
 
     seed_bodies = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
+
+    # Fast path: harvest from seeds/aggregators before any web search.
+    drafts: list[LawRecordDraft] = []
+    try:
+        early_fetch = fetch
+        if seed_bodies >= 2:
+
+            def _cache_only_early(url: str, max_chars: int = 12000) -> str:
+                return fetched_by_url.get(url, "") or ""
+
+            early_fetch = _cache_only_early
+        early = harvest_seed_instruments(
+            resolved,
+            instruments=_instruments_for_cell(resolved),
+            seed_urls=seed_urls,
+            fetch_fn=early_fetch,
+            fetched_cache=fetched_by_url,
+            max_chars_excerpt=min(1200, max_chars_per_page),
+            max_chars_fetch=max_chars_per_page,
+            worker_model="seed_harvest",
+        )
+        drafts = list(early or [])
+    except Exception as exc:
+        errors.append(
+            CellError(
+                cell_id=cell_id,
+                message=f"seed harvest failed: {exc}",
+                stage="research",
+            )
+        )
+
+    if len(drafts) >= 3:
+        # Coverage already satisfied without search/LLM.
+        return {
+            "drafts": drafts,
+            **({"cell_errors": errors} if errors else {}),
+        }
+
     skip_search = seed_bodies >= 2
 
     # Wall-clock budget for search (skipped when seeds already provide bodies).
