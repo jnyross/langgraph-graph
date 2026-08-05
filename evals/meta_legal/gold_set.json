@@ -1,0 +1,1411 @@
+[
+  {
+    "gold_id": "eu-gdpr",
+    "title": "General Data Protection Regulation",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "privacy",
+    "citation": "Regulation (EU) 2016/679",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+    "aliases": [
+      "GDPR",
+      "General Data Protection Regulation (EU) 2016/679",
+      "Reg. (EU) 2016/679"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-eprivacy-directive",
+    "title": "ePrivacy Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "privacy",
+    "citation": "Directive 2002/58/EC",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2002/58/oj",
+    "aliases": [
+      "Directive on privacy and electronic communications",
+      "Cookie Directive",
+      "e-Privacy Directive"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-led",
+    "title": "Law Enforcement Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "privacy",
+    "citation": "Directive (EU) 2016/680",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2016/680/oj",
+    "aliases": [
+      "LED",
+      "Police Directive",
+      "Directive (EU) 2016/680"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-data-governance-act",
+    "title": "Data Governance Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "privacy",
+    "citation": "Regulation (EU) 2022/868",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2022/868/oj",
+    "aliases": [
+      "DGA",
+      "Regulation (EU) 2022/868"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-data-act",
+    "title": "Data Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "privacy",
+    "citation": "Regulation (EU) 2023/2854",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2023/2854/oj",
+    "aliases": [
+      "EU Data Act",
+      "Regulation (EU) 2023/2854"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-dma",
+    "title": "Digital Markets Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "competition",
+    "citation": "Regulation (EU) 2022/1925",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2022/1925/oj",
+    "aliases": [
+      "DMA",
+      "Regulation (EU) 2022/1925"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-tfeu-101",
+    "title": "TFEU Article 101",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "competition",
+    "citation": "TFEU Art. 101",
+    "source_url": "https://eur-lex.europa.eu/eli/treaty/tfeu_2012/art_101/oj",
+    "aliases": [
+      "Article 101 TFEU",
+      "Treaty on the Functioning of the European Union Article 101"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-tfeu-102",
+    "title": "TFEU Article 102",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "competition",
+    "citation": "TFEU Art. 102",
+    "source_url": "https://eur-lex.europa.eu/eli/treaty/tfeu_2012/art_102/oj",
+    "aliases": [
+      "Article 102 TFEU",
+      "Abuse of dominance Article 102"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-merger-regulation",
+    "title": "EU Merger Regulation",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "competition",
+    "citation": "Regulation (EC) No 139/2004",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2004/139/oj",
+    "aliases": [
+      "EUMR",
+      "Council Regulation (EC) No 139/2004"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-p2b",
+    "title": "Platform-to-Business Regulation",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "competition",
+    "citation": "Regulation (EU) 2019/1150",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2019/1150/oj",
+    "aliases": [
+      "P2B Regulation",
+      "Regulation (EU) 2019/1150"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-dsa",
+    "title": "Digital Services Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "youth_safety",
+    "citation": "Regulation (EU) 2022/2065",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2022/2065/oj",
+    "aliases": [
+      "DSA",
+      "Regulation (EU) 2022/2065"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-avmsd",
+    "title": "Audiovisual Media Services Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "youth_safety",
+    "citation": "Directive 2010/13/EU",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2010/13/oj",
+    "aliases": [
+      "AVMSD",
+      "Directive (EU) 2018/1808",
+      "Audiovisual Media Services Directive (recast)"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-csam-proposal-ref",
+    "title": "Child Sexual Abuse Regulation Proposal Framework",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "youth_safety",
+    "citation": "COM/2022/209",
+    "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52022PC0209",
+    "aliases": [
+      "CSAM Regulation proposal",
+      "Proposal for a Regulation laying down rules to prevent and combat child sexual abuse"
+    ],
+    "obscurity": "high",
+    "notes": "Proposal reference commonly cited in platform youth-safety obligations research"
+  },
+  {
+    "gold_id": "eu-cdsm",
+    "title": "Copyright in the Digital Single Market Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "ip",
+    "citation": "Directive (EU) 2019/790",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2019/790/oj",
+    "aliases": [
+      "CDSM Directive",
+      "DSM Copyright Directive",
+      "Article 17 Directive"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-info-soc",
+    "title": "InfoSoc Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "ip",
+    "citation": "Directive 2001/29/EC",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2001/29/oj",
+    "aliases": [
+      "Copyright Directive 2001/29/EC",
+      "Information Society Directive"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-trademark-regulation",
+    "title": "EU Trade Mark Regulation",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "ip",
+    "citation": "Regulation (EU) 2017/1001",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2017/1001/oj",
+    "aliases": [
+      "EUTMR",
+      "European Union trade mark regulation"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-enforcement-directive",
+    "title": "IP Enforcement Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "ip",
+    "citation": "Directive 2004/48/EC",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2004/48/oj",
+    "aliases": [
+      "IPRED",
+      "Enforcement Directive 2004/48/EC"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-eaa",
+    "title": "European Accessibility Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "accessibility",
+    "citation": "Directive (EU) 2019/882",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2019/882/oj",
+    "aliases": [
+      "EAA",
+      "Directive (EU) 2019/882"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "eu-web-accessibility",
+    "title": "Web Accessibility Directive",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "accessibility",
+    "citation": "Directive (EU) 2016/2102",
+    "source_url": "https://eur-lex.europa.eu/eli/dir/2016/2102/oj",
+    "aliases": [
+      "WAD",
+      "Directive (EU) 2016/2102"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "eu-cra",
+    "title": "Cyber Resilience Act",
+    "jurisdiction_id": "european_union",
+    "jurisdiction_name": "European Union",
+    "domain_id": "accessibility",
+    "citation": "Regulation (EU) 2024/2847",
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2024/2847/oj",
+    "aliases": [
+      "CRA",
+      "Regulation (EU) 2024/2847"
+    ],
+    "obscurity": "medium",
+    "notes": "Product cybersecurity; included for platform/device software exposure"
+  },
+  {
+    "gold_id": "us-coppa",
+    "title": "Children's Online Privacy Protection Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "privacy",
+    "citation": "15 U.S.C. §§ 6501–6506",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/chapter-91",
+    "aliases": [
+      "COPPA",
+      "15 USC 6501"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-coppa-rule",
+    "title": "COPPA Rule",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "privacy",
+    "citation": "16 C.F.R. Part 312",
+    "source_url": "https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-312",
+    "aliases": [
+      "Children's Online Privacy Protection Rule",
+      "16 CFR 312"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-section-5-ftc",
+    "title": "FTC Act Section 5",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "privacy",
+    "citation": "15 U.S.C. § 45",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/45",
+    "aliases": [
+      "Federal Trade Commission Act Section 5",
+      "unfair or deceptive acts or practices"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-cloud-act",
+    "title": "Clarifying Lawful Overseas Use of Data Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "privacy",
+    "citation": "CLOUD Act, Pub. L. 115-141",
+    "source_url": "https://www.congress.gov/bill/115th-congress/house-bill/4943",
+    "aliases": [
+      "CLOUD Act",
+      "18 U.S.C. § 2523"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-sherman",
+    "title": "Sherman Antitrust Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "competition",
+    "citation": "15 U.S.C. §§ 1–7",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/chapter-1",
+    "aliases": [
+      "Sherman Act",
+      "15 USC 1"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-clayton",
+    "title": "Clayton Antitrust Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "competition",
+    "citation": "15 U.S.C. §§ 12–27",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/12",
+    "aliases": [
+      "Clayton Act",
+      "15 USC 18"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-ftc-act",
+    "title": "Federal Trade Commission Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "competition",
+    "citation": "15 U.S.C. §§ 41–58",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/41",
+    "aliases": [
+      "FTC Act",
+      "15 USC 45"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-hart-scott-rodino",
+    "title": "Hart-Scott-Rodino Antitrust Improvements Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "competition",
+    "citation": "15 U.S.C. § 18a",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/18a",
+    "aliases": [
+      "HSR Act",
+      "Hart-Scott-Rodino"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-cda-230",
+    "title": "Communications Decency Act Section 230",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "youth_safety",
+    "citation": "47 U.S.C. § 230",
+    "source_url": "https://www.law.cornell.edu/uscode/text/47/230",
+    "aliases": [
+      "Section 230",
+      "CDA 230",
+      "47 USC 230"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-ncmec-reporting",
+    "title": "Federal Child Sexual Exploitation Reporting Duties",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "youth_safety",
+    "citation": "18 U.S.C. § 2258A",
+    "source_url": "https://www.law.cornell.edu/uscode/text/18/2258A",
+    "aliases": [
+      "18 USC 2258A",
+      "NCMEC CyberTipline reporting"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-take-it-down",
+    "title": "TAKE IT DOWN Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "youth_safety",
+    "citation": "Pub. L. 119-12",
+    "source_url": "https://www.congress.gov/bill/119th-congress/senate-bill/146",
+    "aliases": [
+      "Tools to Address Known Exploitation by Immobilizing Technological Deepfakes on Websites and Networks Act"
+    ],
+    "obscurity": "high",
+    "notes": "2025 US federal nonconsensual intimate imagery / deepfake statute"
+  },
+  {
+    "gold_id": "us-dmca",
+    "title": "Digital Millennium Copyright Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "ip",
+    "citation": "17 U.S.C. § 512",
+    "source_url": "https://www.law.cornell.edu/uscode/text/17/512",
+    "aliases": [
+      "DMCA",
+      "DMCA safe harbors",
+      "Online Copyright Infringement Liability Limitation Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-copyright-act",
+    "title": "Copyright Act of 1976",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "ip",
+    "citation": "17 U.S.C. §§ 101 et seq.",
+    "source_url": "https://www.law.cornell.edu/uscode/text/17",
+    "aliases": [
+      "US Copyright Act",
+      "Title 17"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-lanham",
+    "title": "Lanham Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "ip",
+    "citation": "15 U.S.C. §§ 1051 et seq.",
+    "source_url": "https://www.law.cornell.edu/uscode/text/15/chapter-22",
+    "aliases": [
+      "Trademark Act of 1946",
+      "15 USC 1125"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-ada",
+    "title": "Americans with Disabilities Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "accessibility",
+    "citation": "42 U.S.C. §§ 12101 et seq.",
+    "source_url": "https://www.law.cornell.edu/uscode/text/42/chapter-126",
+    "aliases": [
+      "ADA",
+      "ADA Title III",
+      "Americans with Disabilities Act of 1990"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "us-rehab-508",
+    "title": "Rehabilitation Act Section 508",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "accessibility",
+    "citation": "29 U.S.C. § 794d",
+    "source_url": "https://www.law.cornell.edu/uscode/text/29/794d",
+    "aliases": [
+      "Section 508",
+      "29 USC 794d"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-cvad",
+    "title": "21st Century Communications and Video Accessibility Act",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "accessibility",
+    "citation": "Pub. L. 111-260",
+    "source_url": "https://www.fcc.gov/general/twenty-first-century-communications-and-video-accessibility-act-0",
+    "aliases": [
+      "CVAA",
+      "Communications and Video Accessibility Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "us-e-government",
+    "title": "E-Government Act of 2002",
+    "jurisdiction_id": "united_states",
+    "jurisdiction_name": "United States",
+    "domain_id": "privacy",
+    "citation": "Pub. L. 107-347",
+    "source_url": "https://www.congress.gov/bill/107th-congress/house-bill/2458",
+    "aliases": [
+      "E-Government Act",
+      "44 U.S.C. § 3501 note"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "ca-ccpa",
+    "title": "California Consumer Privacy Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "privacy",
+    "citation": "Cal. Civ. Code §§ 1798.100 et seq.",
+    "source_url": "https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?division=3.&part=4.&lawCode=CIV&title=1.81.5",
+    "aliases": [
+      "CCPA",
+      "California Consumer Privacy Act of 2018"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "ca-cpra",
+    "title": "California Privacy Rights Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "privacy",
+    "citation": "Proposition 24 (2020); Cal. Civ. Code §§ 1798.100 et seq.",
+    "source_url": "https://cppa.ca.gov/regulations/",
+    "aliases": [
+      "CPRA",
+      "Prop 24"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "ca-delete-act",
+    "title": "Delete Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "privacy",
+    "citation": "Cal. Civ. Code § 1798.99.80 et seq.",
+    "source_url": "https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=202320240SB362",
+    "aliases": [
+      "California Delete Act",
+      "SB 362"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "ca-age-appropriate-design",
+    "title": "California Age-Appropriate Design Code Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "youth_safety",
+    "citation": "Cal. Civ. Code §§ 1798.99.28 et seq.",
+    "source_url": "https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=202120220AB2273",
+    "aliases": [
+      "CA AADC",
+      "AB 2273",
+      "California Age Appropriate Design Code"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ca-sb976",
+    "title": "Protecting Our Kids from Social Media Addiction Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "youth_safety",
+    "citation": "Cal. Health & Safety Code § 27000 et seq. (SB 976)",
+    "source_url": "https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=202320240SB976",
+    "aliases": [
+      "SB 976",
+      "California social media addiction act"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "ca-unruh",
+    "title": "Unruh Civil Rights Act",
+    "jurisdiction_id": "california",
+    "jurisdiction_name": "California",
+    "domain_id": "accessibility",
+    "citation": "Cal. Civ. Code § 51",
+    "source_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=51",
+    "aliases": [
+      "Unruh Act",
+      "California Civ. Code 51"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "va-cdpa",
+    "title": "Virginia Consumer Data Protection Act",
+    "jurisdiction_id": "virginia",
+    "jurisdiction_name": "Virginia",
+    "domain_id": "privacy",
+    "citation": "Va. Code §§ 59.1-575 et seq.",
+    "source_url": "https://law.lis.virginia.gov/vacode/title59.1/chapter53/",
+    "aliases": [
+      "VCDPA",
+      "Virginia CDPA"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "co-cpa",
+    "title": "Colorado Privacy Act",
+    "jurisdiction_id": "colorado",
+    "jurisdiction_name": "Colorado",
+    "domain_id": "privacy",
+    "citation": "Colo. Rev. Stat. §§ 6-1-1301 et seq.",
+    "source_url": "https://leg.colorado.gov/bills/sb21-190",
+    "aliases": [
+      "CPA Colorado",
+      "Colorado SB 21-190"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ct-ctdpa",
+    "title": "Connecticut Data Privacy Act",
+    "jurisdiction_id": "connecticut",
+    "jurisdiction_name": "Connecticut",
+    "domain_id": "privacy",
+    "citation": "Conn. Gen. Stat. §§ 42-515 et seq.",
+    "source_url": "https://www.cga.ct.gov/asp/cgabillstatus/cgabillstatus.asp?selBillType=Bill&bill_num=SB00006&which_year=2022",
+    "aliases": [
+      "CTDPA",
+      "Connecticut SB 6"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ut-ucpa",
+    "title": "Utah Consumer Privacy Act",
+    "jurisdiction_id": "utah",
+    "jurisdiction_name": "Utah",
+    "domain_id": "privacy",
+    "citation": "Utah Code §§ 13-61-101 et seq.",
+    "source_url": "https://le.utah.gov/~2022/bills/static/SB0227.html",
+    "aliases": [
+      "UCPA",
+      "Utah SB 227"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "tx-tdpsa",
+    "title": "Texas Data Privacy and Security Act",
+    "jurisdiction_id": "texas",
+    "jurisdiction_name": "Texas",
+    "domain_id": "privacy",
+    "citation": "Tex. Bus. & Com. Code §§ 541.001 et seq.",
+    "source_url": "https://capitol.texas.gov/BillLookup/History.aspx?LegSess=88R&Bill=HB4",
+    "aliases": [
+      "TDPSA",
+      "Texas HB 4"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "or-ocpa",
+    "title": "Oregon Consumer Privacy Act",
+    "jurisdiction_id": "oregon",
+    "jurisdiction_name": "Oregon",
+    "domain_id": "privacy",
+    "citation": "Or. Rev. Stat. §§ 646A.570 et seq.",
+    "source_url": "https://olis.oregonlegislature.gov/liz/2023R1/Measures/Overview/SB619",
+    "aliases": [
+      "OCPA",
+      "Oregon SB 619"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "mt-mcda",
+    "title": "Montana Consumer Data Privacy Act",
+    "jurisdiction_id": "montana",
+    "jurisdiction_name": "Montana",
+    "domain_id": "privacy",
+    "citation": "Mont. Code Ann. §§ 30-14-2801 et seq.",
+    "source_url": "https://leg.mt.gov/bills/2023/billhtml/SB0384.htm",
+    "aliases": [
+      "MCDPA",
+      "Montana SB 384"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "de-dpdpa",
+    "title": "Delaware Personal Data Privacy Act",
+    "jurisdiction_id": "delaware",
+    "jurisdiction_name": "Delaware",
+    "domain_id": "privacy",
+    "citation": "6 Del. C. §§ 12D-101 et seq.",
+    "source_url": "https://legis.delaware.gov/BillDetail?LegislationId=140380",
+    "aliases": [
+      "DPDPA",
+      "Delaware HB 154"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "il-bipa",
+    "title": "Biometric Information Privacy Act",
+    "jurisdiction_id": "illinois",
+    "jurisdiction_name": "Illinois",
+    "domain_id": "privacy",
+    "citation": "740 ILCS 14/",
+    "source_url": "https://www.ilga.gov/legislation/ilcs/ilcs3.asp?ActID=3004&ChapterID=57",
+    "aliases": [
+      "BIPA",
+      "Illinois BIPA"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "wa-my-health-my-data",
+    "title": "My Health My Data Act",
+    "jurisdiction_id": "washington",
+    "jurisdiction_name": "Washington",
+    "domain_id": "privacy",
+    "citation": "Wash. Rev. Code §§ 19.373.005 et seq.",
+    "source_url": "https://app.leg.wa.gov/billsummary?BillNumber=1155&Year=2023",
+    "aliases": [
+      "MHMD",
+      "Washington My Health My Data"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "fl-digital-bill-of-rights",
+    "title": "Florida Digital Bill of Rights",
+    "jurisdiction_id": "florida",
+    "jurisdiction_name": "Florida",
+    "domain_id": "privacy",
+    "citation": "Fla. Stat. §§ 501.701 et seq.",
+    "source_url": "https://www.flsenate.gov/Session/Bill/2023/262",
+    "aliases": [
+      "FDBR",
+      "Florida SB 262"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ut-social-media-regulation",
+    "title": "Utah Social Media Regulation Act",
+    "jurisdiction_id": "utah",
+    "jurisdiction_name": "Utah",
+    "domain_id": "youth_safety",
+    "citation": "Utah Code §§ 13-63-101 et seq.",
+    "source_url": "https://le.utah.gov/~2023/bills/static/SB0152.html",
+    "aliases": [
+      "Utah SB 152",
+      "Utah social media law"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ar-social-media-safety",
+    "title": "Arkansas Social Media Safety Act",
+    "jurisdiction_id": "arkansas",
+    "jurisdiction_name": "Arkansas",
+    "domain_id": "youth_safety",
+    "citation": "Ark. Code §§ 4-88-1401 et seq.",
+    "source_url": "https://www.arkleg.state.ar.us/Bills/Detail?id=sb396&ddBienniumSession=2023%2F2023R",
+    "aliases": [
+      "Arkansas SB 396",
+      "Social Media Safety Act"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "ny-child-data-protection",
+    "title": "New York Child Data Protection Act",
+    "jurisdiction_id": "new_york",
+    "jurisdiction_name": "New York",
+    "domain_id": "youth_safety",
+    "citation": "N.Y. Gen. Bus. Law § 899-ee et seq.",
+    "source_url": "https://www.nysenate.gov/legislation/bills/2023/S7695",
+    "aliases": [
+      "NY CDPA child",
+      "New York S7695"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "uk-ukgdpr",
+    "title": "UK GDPR",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "privacy",
+    "citation": "United Kingdom General Data Protection Regulation",
+    "source_url": "https://www.legislation.gov.uk/eur/2016/679/contents",
+    "aliases": [
+      "UK General Data Protection Regulation",
+      "Retained GDPR"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "uk-dpa-2018",
+    "title": "Data Protection Act 2018",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "privacy",
+    "citation": "2018 c. 12",
+    "source_url": "https://www.legislation.gov.uk/ukpga/2018/12/contents",
+    "aliases": [
+      "DPA 2018",
+      "UK Data Protection Act 2018"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "uk-pecr",
+    "title": "Privacy and Electronic Communications Regulations",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "privacy",
+    "citation": "SI 2003/2426",
+    "source_url": "https://www.legislation.gov.uk/uksi/2003/2426/contents",
+    "aliases": [
+      "PECR",
+      "Privacy and Electronic Communications (EC Directive) Regulations 2003"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "uk-online-safety-act",
+    "title": "Online Safety Act 2023",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "youth_safety",
+    "citation": "2023 c. 50",
+    "source_url": "https://www.legislation.gov.uk/ukpga/2023/50/contents",
+    "aliases": [
+      "OSA 2023",
+      "UK Online Safety Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "uk-age-appropriate-design-code",
+    "title": "Age Appropriate Design Code",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "youth_safety",
+    "citation": "ICO Age Appropriate Design Code",
+    "source_url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/childrens-information/childrens-code-guidance-and-resources/age-appropriate-design-a-code-of-practice-for-online-services/",
+    "aliases": [
+      "Children's Code",
+      "UK AADC",
+      "ICO Children's Code"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "uk-competition-act-1998",
+    "title": "Competition Act 1998",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "competition",
+    "citation": "1998 c. 41",
+    "source_url": "https://www.legislation.gov.uk/ukpga/1998/41/contents",
+    "aliases": [
+      "UK Competition Act",
+      "CA98"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "uk-dmcc",
+    "title": "Digital Markets, Competition and Consumers Act 2024",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "competition",
+    "citation": "2024 c. 13",
+    "source_url": "https://www.legislation.gov.uk/ukpga/2024/13/contents",
+    "aliases": [
+      "DMCC Act",
+      "DMCCA"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "uk-cdpa",
+    "title": "Copyright, Designs and Patents Act 1988",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "ip",
+    "citation": "1988 c. 48",
+    "source_url": "https://www.legislation.gov.uk/ukpga/1988/48/contents",
+    "aliases": [
+      "CDPA 1988",
+      "UK Copyright Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "uk-equality-act",
+    "title": "Equality Act 2010",
+    "jurisdiction_id": "united_kingdom",
+    "jurisdiction_name": "United Kingdom",
+    "domain_id": "accessibility",
+    "citation": "2010 c. 15",
+    "source_url": "https://www.legislation.gov.uk/ukpga/2010/15/contents",
+    "aliases": [
+      "EA 2010",
+      "UK Equality Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "ie-online-safety-media",
+    "title": "Online Safety and Media Regulation Act 2022",
+    "jurisdiction_id": "ireland",
+    "jurisdiction_name": "Ireland",
+    "domain_id": "youth_safety",
+    "citation": "No. 41 of 2022",
+    "source_url": "https://www.irishstatutebook.ie/eli/2022/act/41/enacted/en/html",
+    "aliases": [
+      "OSMR Act",
+      "Ireland Online Safety Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "br-lgpd",
+    "title": "Lei Geral de Proteção de Dados",
+    "jurisdiction_id": "brazil",
+    "jurisdiction_name": "Brazil",
+    "domain_id": "privacy",
+    "citation": "Lei nº 13.709/2018",
+    "source_url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm",
+    "aliases": [
+      "LGPD",
+      "Brazilian General Data Protection Law",
+      "Law 13.709/2018"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "br-marco-civil",
+    "title": "Marco Civil da Internet",
+    "jurisdiction_id": "brazil",
+    "jurisdiction_name": "Brazil",
+    "domain_id": "privacy",
+    "citation": "Lei nº 12.965/2014",
+    "source_url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm",
+    "aliases": [
+      "Brazilian Civil Rights Framework for the Internet",
+      "Law 12.965/2014"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "br-eca",
+    "title": "Estatuto da Criança e do Adolescente",
+    "jurisdiction_id": "brazil",
+    "jurisdiction_name": "Brazil",
+    "domain_id": "youth_safety",
+    "citation": "Lei nº 8.069/1990",
+    "source_url": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm",
+    "aliases": [
+      "ECA",
+      "Child and Adolescent Statute"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "br-cade-law",
+    "title": "Brazilian Competition Law",
+    "jurisdiction_id": "brazil",
+    "jurisdiction_name": "Brazil",
+    "domain_id": "competition",
+    "citation": "Lei nº 12.529/2011",
+    "source_url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12529.htm",
+    "aliases": [
+      "CADE Law",
+      "Law 12.529/2011"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "in-dpdp",
+    "title": "Digital Personal Data Protection Act 2023",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "privacy",
+    "citation": "Act No. 22 of 2023",
+    "source_url": "https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf",
+    "aliases": [
+      "DPDP Act",
+      "DPDPA",
+      "India Digital Personal Data Protection Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "in-it-act",
+    "title": "Information Technology Act 2000",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "privacy",
+    "citation": "Act No. 21 of 2000",
+    "source_url": "https://www.meity.gov.in/content/information-technology-act-2000",
+    "aliases": [
+      "IT Act 2000",
+      "India IT Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "in-it-rules-2021",
+    "title": "Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules 2021",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "youth_safety",
+    "citation": "G.S.R. 139(E)",
+    "source_url": "https://www.meity.gov.in/writereaddata/files/Intermediary_Guidelines_and_Digital_Media_Ethics_Code_Rules-2021.pdf",
+    "aliases": [
+      "IT Rules 2021",
+      "Intermediary Guidelines 2021"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "in-competition-act",
+    "title": "Competition Act 2002",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "competition",
+    "citation": "Act No. 12 of 2003",
+    "source_url": "https://www.cci.gov.in/legal-framework/act",
+    "aliases": [
+      "India Competition Act",
+      "Competition Commission of India Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "in-copyright-act",
+    "title": "Copyright Act 1957",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "ip",
+    "citation": "Act No. 14 of 1957",
+    "source_url": "https://copyright.gov.in/Documents/Copyrightrules1957.pdf",
+    "aliases": [
+      "Indian Copyright Act",
+      "Copyright Act of India"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "in-rpd-act",
+    "title": "Rights of Persons with Disabilities Act 2016",
+    "jurisdiction_id": "india",
+    "jurisdiction_name": "India",
+    "domain_id": "accessibility",
+    "citation": "Act No. 49 of 2016",
+    "source_url": "https://www.indiacode.nic.in/handle/123456789/2155",
+    "aliases": [
+      "RPWD Act",
+      "RPwD Act 2016"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "au-privacy-act",
+    "title": "Privacy Act 1988",
+    "jurisdiction_id": "australia",
+    "jurisdiction_name": "Australia",
+    "domain_id": "privacy",
+    "citation": "Cth Privacy Act 1988",
+    "source_url": "https://www.legislation.gov.au/C2004A03712/latest",
+    "aliases": [
+      "Australian Privacy Act",
+      "APPs Privacy Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "au-online-safety-act",
+    "title": "Online Safety Act 2021",
+    "jurisdiction_id": "australia",
+    "jurisdiction_name": "Australia",
+    "domain_id": "youth_safety",
+    "citation": "Cth Online Safety Act 2021",
+    "source_url": "https://www.legislation.gov.au/C2021A00076/latest",
+    "aliases": [
+      "Australian Online Safety Act",
+      "eSafety Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "au-competition-consumer",
+    "title": "Competition and Consumer Act 2010",
+    "jurisdiction_id": "australia",
+    "jurisdiction_name": "Australia",
+    "domain_id": "competition",
+    "citation": "Cth Competition and Consumer Act 2010",
+    "source_url": "https://www.legislation.gov.au/C2004A00109/latest",
+    "aliases": [
+      "CCA 2010",
+      "Australian Consumer Law framework statute"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "au-copyright-act",
+    "title": "Copyright Act 1968",
+    "jurisdiction_id": "australia",
+    "jurisdiction_name": "Australia",
+    "domain_id": "ip",
+    "citation": "Cth Copyright Act 1968",
+    "source_url": "https://www.legislation.gov.au/C1968A00063/latest",
+    "aliases": [
+      "Australian Copyright Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "au-disability-discrimination",
+    "title": "Disability Discrimination Act 1992",
+    "jurisdiction_id": "australia",
+    "jurisdiction_name": "Australia",
+    "domain_id": "accessibility",
+    "citation": "Cth Disability Discrimination Act 1992",
+    "source_url": "https://www.legislation.gov.au/C2004A04426/latest",
+    "aliases": [
+      "DDA 1992",
+      "Australian DDA"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ca-pipeda",
+    "title": "Personal Information Protection and Electronic Documents Act",
+    "jurisdiction_id": "canada",
+    "jurisdiction_name": "Canada",
+    "domain_id": "privacy",
+    "citation": "S.C. 2000, c. 5",
+    "source_url": "https://laws-lois.justice.gc.ca/eng/acts/P-8.6/",
+    "aliases": [
+      "PIPEDA",
+      "Canada PIPEDA"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "ca-competition-act",
+    "title": "Competition Act (Canada)",
+    "jurisdiction_id": "canada",
+    "jurisdiction_name": "Canada",
+    "domain_id": "competition",
+    "citation": "R.S.C. 1985, c. C-34",
+    "source_url": "https://laws-lois.justice.gc.ca/eng/acts/C-34/",
+    "aliases": [
+      "Canadian Competition Act",
+      "Canada Competition Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "ca-copyright-act",
+    "title": "Copyright Act (Canada)",
+    "jurisdiction_id": "canada",
+    "jurisdiction_name": "Canada",
+    "domain_id": "ip",
+    "citation": "R.S.C. 1985, c. C-42",
+    "source_url": "https://laws-lois.justice.gc.ca/eng/acts/C-42/",
+    "aliases": [
+      "Canadian Copyright Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "ca-accessible-canada",
+    "title": "Accessible Canada Act",
+    "jurisdiction_id": "canada",
+    "jurisdiction_name": "Canada",
+    "domain_id": "accessibility",
+    "citation": "S.C. 2019, c. 10",
+    "source_url": "https://laws-lois.justice.gc.ca/eng/acts/A-0.6/",
+    "aliases": [
+      "ACA Canada",
+      "Accessible Canada Act 2019"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "jp-appsi",
+    "title": "Act on the Protection of Personal Information",
+    "jurisdiction_id": "japan",
+    "jurisdiction_name": "Japan",
+    "domain_id": "privacy",
+    "citation": "Act No. 57 of 2003",
+    "source_url": "https://www.ppc.go.jp/en/legal/",
+    "aliases": [
+      "APPI",
+      "Japanese APPI"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "jp-antimonopoly",
+    "title": "Antimonopoly Act",
+    "jurisdiction_id": "japan",
+    "jurisdiction_name": "Japan",
+    "domain_id": "competition",
+    "citation": "Act No. 54 of 1947",
+    "source_url": "https://www.jftc.go.jp/en/legislation_gls/amended_ama09/",
+    "aliases": [
+      "AMA Japan",
+      "Japanese Antimonopoly Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "jp-copyright",
+    "title": "Copyright Act (Japan)",
+    "jurisdiction_id": "japan",
+    "jurisdiction_name": "Japan",
+    "domain_id": "ip",
+    "citation": "Act No. 48 of 1970",
+    "source_url": "https://www.cric.or.jp/english/clj/",
+    "aliases": [
+      "Japanese Copyright Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "kr-pipa",
+    "title": "Personal Information Protection Act",
+    "jurisdiction_id": "south_korea",
+    "jurisdiction_name": "South Korea",
+    "domain_id": "privacy",
+    "citation": "Act No. 10465",
+    "source_url": "https://www.pipc.go.kr/eng/user/lgd/lid/LgdLidList.do",
+    "aliases": [
+      "PIPA Korea",
+      "Korean PIPA"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "kr-network-act",
+    "title": "Act on Promotion of Information and Communications Network Utilization and Information Protection",
+    "jurisdiction_id": "south_korea",
+    "jurisdiction_name": "South Korea",
+    "domain_id": "youth_safety",
+    "citation": "Act No. 07167",
+    "source_url": "https://elaw.klri.re.kr/eng_service/lawView.do?hseq=38422&lang=ENG",
+    "aliases": [
+      "Network Act Korea",
+      "ICNA"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "kr-mrfta",
+    "title": "Monopoly Regulation and Fair Trade Act",
+    "jurisdiction_id": "south_korea",
+    "jurisdiction_name": "South Korea",
+    "domain_id": "competition",
+    "citation": "Act No. 3320",
+    "source_url": "https://www.ftc.go.kr/eng/coping.do",
+    "aliases": [
+      "MRFTA",
+      "Korean Fair Trade Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "sg-pdpa",
+    "title": "Personal Data Protection Act 2012",
+    "jurisdiction_id": "singapore",
+    "jurisdiction_name": "Singapore",
+    "domain_id": "privacy",
+    "citation": "Act 26 of 2012",
+    "source_url": "https://sso.agc.gov.sg/Act/PDPA2012",
+    "aliases": [
+      "PDPA Singapore",
+      "Singapore PDPA"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "sg-online-safety",
+    "title": "Online Safety (Miscellaneous Amendments) Act 2022",
+    "jurisdiction_id": "singapore",
+    "jurisdiction_name": "Singapore",
+    "domain_id": "youth_safety",
+    "citation": "Act 38 of 2022",
+    "source_url": "https://sso.agc.gov.sg/Acts-Supp/38-2022/",
+    "aliases": [
+      "Singapore Online Safety Act",
+      "OSA Singapore"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "sg-competition-act",
+    "title": "Competition Act 2004",
+    "jurisdiction_id": "singapore",
+    "jurisdiction_name": "Singapore",
+    "domain_id": "competition",
+    "citation": "Cap. 50B",
+    "source_url": "https://sso.agc.gov.sg/Act/CA2004",
+    "aliases": [
+      "Singapore Competition Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "za-popia",
+    "title": "Protection of Personal Information Act",
+    "jurisdiction_id": "south_africa",
+    "jurisdiction_name": "South Africa",
+    "domain_id": "privacy",
+    "citation": "Act 4 of 2013",
+    "source_url": "https://www.gov.za/documents/protection-personal-information-act",
+    "aliases": [
+      "POPIA",
+      "POPI Act"
+    ],
+    "obscurity": "low"
+  },
+  {
+    "gold_id": "za-competition-act",
+    "title": "Competition Act 89 of 1998",
+    "jurisdiction_id": "south_africa",
+    "jurisdiction_name": "South Africa",
+    "domain_id": "competition",
+    "citation": "Act 89 of 1998",
+    "source_url": "https://www.gov.za/documents/competition-act",
+    "aliases": [
+      "South African Competition Act"
+    ],
+    "obscurity": "medium"
+  },
+  {
+    "gold_id": "za-ecta",
+    "title": "Electronic Communications and Transactions Act",
+    "jurisdiction_id": "south_africa",
+    "jurisdiction_name": "South Africa",
+    "domain_id": "ip",
+    "citation": "Act 25 of 2002",
+    "source_url": "https://www.gov.za/documents/electronic-communications-and-transactions-act",
+    "aliases": [
+      "ECTA",
+      "ECT Act South Africa"
+    ],
+    "obscurity": "high"
+  },
+  {
+    "gold_id": "za-equality-act",
+    "title": "Promotion of Equality and Prevention of Unfair Discrimination Act",
+    "jurisdiction_id": "south_africa",
+    "jurisdiction_name": "South Africa",
+    "domain_id": "accessibility",
+    "citation": "Act 4 of 2000",
+    "source_url": "https://www.gov.za/documents/promotion-equality-and-prevention-unfair-discrimination-act",
+    "aliases": [
+      "PEPUDA",
+      "Equality Act South Africa"
+    ],
+    "obscurity": "high"
+  }
+]

@@ -34,6 +34,7 @@ secrets/
 *.sqlite-journal
 checkpoints/
 langgraph-data/
+.langgraph_api/
 
 # OS
 .DS_Store
@@ -43,3 +44,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+
+# Meta legal dossiers
+data/dossiers/*
+!data/dossiers/.gitkeep
