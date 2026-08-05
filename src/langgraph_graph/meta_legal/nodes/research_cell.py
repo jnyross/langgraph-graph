@@ -47,10 +47,10 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
 
-# Speed campaign defaults: tight caps; rich-excerpt harvest preserves quality.
-DEFAULT_MAX_QUERIES = 2
-DEFAULT_SEARCH_BUDGET_S = 3.0
-_SEARCH_QUERY_WORKERS = 4
+# exp_007/010: cap queries per cell and bound search wall-clock (all cells).
+DEFAULT_MAX_QUERIES = 4
+DEFAULT_SEARCH_BUDGET_S = 6.0
+_SEARCH_QUERY_WORKERS = 6
 
 
 def _max_queries() -> int:
@@ -1885,9 +1885,9 @@ def run_research_cell(
     search_fn: SearchFn | None = None,
     fetch_fn: FetchFn | None = None,
     llm: Any | None = None,
-    max_results_per_query: int = 2,
-    max_urls: int = 5,
-    max_chars_per_page: int = 5000,
+    max_results_per_query: int = 3,
+    max_urls: int = 6,
+    max_chars_per_page: int = 8000,
     max_fetch_workers: int = 12,
 ) -> dict[str, list[Any]]:
     """Core research worker with injectable tools/LLM (for tests).
@@ -1943,81 +1943,24 @@ def run_research_cell(
             return url, "", f"fetch failed for {url}: {exc}"
         return url, text, None
 
-    # Prefetch top seeds first; quality early-exit needs non-empty excerpts.
-    seed_prefetch = seed_urls[: min(3, len(seed_urls))]
+    # Prefetch top seeds while search runs (cache makes later harvest free).
+    seed_prefetch = seed_urls[: min(4, len(seed_urls))]
     fetched_by_url: dict[str, str] = {}
+    prefetch_pool: _DaemonThreadPoolExecutor | None = None
+    prefetch_futs: dict[Any, str] = {}
     if seed_prefetch:
-        pre_pool = _DaemonThreadPoolExecutor(max_workers=min(4, len(seed_prefetch)))
-        try:
-            pre_futs = {pre_pool.submit(_fetch_one, u): u for u in seed_prefetch}
-            for fut in as_completed(pre_futs, timeout=12.0):
-                url = pre_futs[fut]
-                try:
-                    got_url, text, err_msg = fut.result()
-                except Exception as exc:
-                    errors.append(
-                        CellError(
-                            cell_id=cell_id,
-                            message=f"seed prefetch failed for {url}: {exc}",
-                            stage="research",
-                        )
-                    )
-                    continue
-                if err_msg:
-                    errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
-                if (text or "").strip():
-                    fetched_by_url[got_url] = text.strip()
-        except FuturesTimeout:
-            pass
-        finally:
-            pre_pool.shutdown(wait=False, cancel_futures=True)
+        prefetch_pool = _DaemonThreadPoolExecutor(
+            max_workers=min(4, len(seed_prefetch))
+        )
+        prefetch_futs = {
+            prefetch_pool.submit(_fetch_one, u): u for u in seed_prefetch
+        }
 
-    seed_bodies = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
-
-    # Fast path: harvest using prefetched seed bodies only (no further network).
-    # Only for cells with curated seeds — seedless cells need search first.
-    drafts: list[LawRecordDraft] = []
-    if seed_urls:
-        try:
-
-            def _cache_only_early(url: str, max_chars: int = 12000) -> str:
-                return fetched_by_url.get(url, "") or ""
-
-            early = harvest_seed_instruments(
-                resolved,
-                instruments=_instruments_for_cell(resolved),
-                seed_urls=seed_urls,
-                fetch_fn=_cache_only_early,
-                fetched_cache=fetched_by_url,
-                max_chars_excerpt=min(1200, max_chars_per_page),
-                max_chars_fetch=max_chars_per_page,
-                worker_model="seed_harvest",
-            )
-            drafts = list(early or [])
-        except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"seed harvest failed: {exc}",
-                    stage="research",
-                )
-            )
-
-        # Quality early-exit: need enough drafts AND non-empty excerpts (real page text).
-        rich = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
-        if len(rich) >= 3:
-            return {
-                "drafts": rich,
-                **({"cell_errors": errors} if errors else {}),
-            }
-
-    # Seeded cells: seeds+harvest are sufficient; skip web search entirely.
-    skip_search = bool(seed_urls) or seed_bodies >= 2
-    # Wall-clock budget for search (skipped when seeds already provide bodies).
+    # Wall-clock budget for every cell (seeded and seedless).
     budget_s: float = _search_budget_s()
     hits_by_query: dict[str, list[dict[str, str]]] = {}
     try:
-        if queries and not skip_search:
+        if queries:
             pool = _DaemonThreadPoolExecutor(
                 max_workers=min(_SEARCH_QUERY_WORKERS, len(queries))
             )
@@ -2076,6 +2019,29 @@ def run_research_cell(
             CellError(cell_id=cell_id, message=f"search loop failed: {exc}", stage="research")
         )
 
+    # Collect seed prefetch results.
+    if prefetch_futs:
+        for fut, url in prefetch_futs.items():
+            try:
+                got_url, text, err_msg = fut.result(timeout=0.1)
+            except Exception:
+                try:
+                    got_url, text, err_msg = fut.result(timeout=12.0)
+                except Exception as exc:
+                    errors.append(
+                        CellError(
+                            cell_id=cell_id,
+                            message=f"seed prefetch failed for {url}: {exc}",
+                            stage="research",
+                        )
+                    )
+                    continue
+            if err_msg:
+                errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
+            if (text or "").strip():
+                fetched_by_url[got_url] = text.strip()
+    if prefetch_pool is not None:
+        prefetch_pool.shutdown(wait=False, cancel_futures=True)
 
     for seed in seed_urls:
         search_hits.append(
@@ -2181,30 +2147,65 @@ def run_research_cell(
         )
     context = "\n\n".join(context_parts)
 
-    # --- deterministic harvest (seeds, else any successfully fetched pages) ---
+    # --- LLM extract ---
+    active_llm = llm
+    if active_llm is None:
+        try:
+            active_llm = get_llm(worker_model)
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"llm init failed: {exc}",
+                    stage="research",
+                )
+            )
+            active_llm = None
+
+    drafts = []
+    if active_llm is not None:
+        try:
+            drafts = _invoke_llm_for_drafts(
+                llm=active_llm,
+                cell=resolved,
+                context=context,
+                worker_model=worker_model,
+            )
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"llm extraction failed: {exc}",
+                    stage="research",
+                )
+            )
+            drafts = []
+
+    if not drafts and not search_empty:
+        # Soft warning when model produced nothing usable (harvest may still fill).
+        errors.append(
+            CellError(
+                cell_id=cell_id,
+                message="llm returned no usable drafts",
+                stage="research",
+            )
+        )
+
+    # Deterministic floor: curated instruments + seed URLs even if LLM/search flaked.
     try:
         harvest_fetch = fetch
-        seed_bodies_n = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
-        if seed_bodies_n >= 2:
+        # If seed prefetch already filled body text, avoid a second network wave.
+        seed_bodies = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
+        if seed_bodies >= 2:
 
             def _cache_only(url: str, max_chars: int = 12000) -> str:
                 return fetched_by_url.get(url, "") or ""
 
             harvest_fetch = _cache_only
-        harvest_seeds = list(seed_urls)
-        if not harvest_seeds:
-            harvest_seeds = [u for u, t in fetched_by_url.items() if (t or "").strip()][:8]
-        # Drop hollow early aggregator drafts when we now have real page bodies.
-        if harvest_seeds and any((fetched_by_url.get(u) or "").strip() for u in harvest_seeds):
-            drafts = [
-                d
-                for d in drafts
-                if (getattr(d, "excerpt", None) or "").strip()
-            ]
         harvested = harvest_seed_instruments(
             resolved,
             instruments=_instruments_for_cell(resolved),
-            seed_urls=harvest_seeds if harvest_seeds else seed_urls,
+            seed_urls=seed_urls,
             fetch_fn=harvest_fetch,
             fetched_cache=fetched_by_url,
             max_chars_excerpt=min(1200, max_chars_per_page),
@@ -2220,88 +2221,6 @@ def run_research_cell(
                 stage="research",
             )
         )
-
-    # Skip LLM only when harvest produced enough drafts with real page text.
-    rich_n = sum(1 for d in drafts if (getattr(d, "excerpt", None) or "").strip())
-    need_llm = rich_n < 3
-    active_llm = llm
-    if need_llm and active_llm is None:
-        try:
-            active_llm = get_llm(worker_model)
-        except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"llm init failed: {exc}",
-                    stage="research",
-                )
-            )
-            active_llm = None
-
-    if need_llm and active_llm is not None:
-        try:
-            llm_drafts = _invoke_llm_for_drafts(
-                llm=active_llm,
-                cell=resolved,
-                context=context,
-                worker_model=worker_model,
-            )
-            drafts = merge_drafts(llm_drafts, drafts)
-        except Exception as exc:
-            errors.append(
-                CellError(
-                    cell_id=cell_id,
-                    message=f"llm extraction failed: {exc}",
-                    stage="research",
-                )
-            )
-    elif need_llm and not drafts and not search_empty:
-        errors.append(
-            CellError(
-                cell_id=cell_id,
-                message="llm returned no usable drafts",
-                stage="research",
-            )
-        )
-
-    # Prefer drafts with real page text; drop hollow-only sets when mixed.
-    rich_final = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
-    if rich_final:
-        drafts = rich_final
-    elif not rich_final:
-        # Last chance: force-fetch a few URLs so quality gate has real excerpts.
-        candidates = list(seed_urls[:4])
-        for item in search_hits:
-            u = str(item.get("url") or "").strip()
-            if u.startswith("http") and u not in candidates:
-                candidates.append(u)
-            if len(candidates) >= 6:
-                break
-        if candidates:
-            try:
-                rescued = harvest_seed_instruments(
-                    resolved,
-                    instruments=_instruments_for_cell(resolved),
-                    seed_urls=candidates,
-                    fetch_fn=fetch,
-                    fetched_cache=fetched_by_url,
-                    max_chars_excerpt=min(1200, max_chars_per_page),
-                    max_chars_fetch=max_chars_per_page,
-                    worker_model="seed_harvest",
-                )
-                rich_rescue = [
-                    d for d in (rescued or []) if (getattr(d, "excerpt", None) or "").strip()
-                ]
-                if rich_rescue:
-                    drafts = rich_rescue
-            except Exception as exc:
-                errors.append(
-                    CellError(
-                        cell_id=cell_id,
-                        message=f"rescue harvest failed: {exc}",
-                        stage="research",
-                    )
-                )
 
     # Hard empty-search signal only if we still have nothing to accept.
     if search_empty and not drafts:
