@@ -332,8 +332,9 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
       - ``httpx``: thread-local httpx client only (exp004 path)
 
     Firecrawl concurrency gated by ``META_LEGAL_FIRECRAWL_MAX_PAR`` (default 20).
-    Process-wide memo caches successes and empty failures so parallel cells do
-    not re-scrape the same statute URL. Never raises; returns ``""`` on failure.
+    Process-wide memo caches successful non-empty bodies so parallel cells do
+    not re-scrape the same statute URL. Empty failures are not cached (a
+    transient miss must not poison EU/US seed inheritance across cells).
     """
     target = (url or "").strip()
     if not target:
@@ -358,11 +359,14 @@ def fetch_url(url: str, max_chars: int = 12000) -> str:
         if not text:
             text = _fetch_via_httpx(target, limit)
 
-    with _FETCH_CACHE_LOCK:
-        if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX and key not in _FETCH_CACHE:
-            try:
-                _FETCH_CACHE.pop(next(iter(_FETCH_CACHE)))
-            except StopIteration:
-                pass
-        _FETCH_CACHE[key] = text
+    # Only memoize successful bodies. Caching "" made one shared-seed failure
+    # (e.g. eur-lex) starve every inheriting cell for the rest of the process.
+    if text:
+        with _FETCH_CACHE_LOCK:
+            if len(_FETCH_CACHE) >= _FETCH_CACHE_MAX and key not in _FETCH_CACHE:
+                try:
+                    _FETCH_CACHE.pop(next(iter(_FETCH_CACHE)))
+                except StopIteration:
+                    pass
+            _FETCH_CACHE[key] = text
     return text
