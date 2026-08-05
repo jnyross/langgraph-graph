@@ -1974,40 +1974,42 @@ def run_research_cell(
 
     seed_bodies = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
 
-    # Fast path: harvest using prefetched bodies only (no further network).
+    # Fast path: harvest using prefetched seed bodies only (no further network).
+    # Only for cells with curated seeds — seedless cells need search first.
     drafts: list[LawRecordDraft] = []
-    try:
+    if seed_urls:
+        try:
 
-        def _cache_only_early(url: str, max_chars: int = 12000) -> str:
-            return fetched_by_url.get(url, "") or ""
+            def _cache_only_early(url: str, max_chars: int = 12000) -> str:
+                return fetched_by_url.get(url, "") or ""
 
-        early = harvest_seed_instruments(
-            resolved,
-            instruments=_instruments_for_cell(resolved),
-            seed_urls=seed_urls,
-            fetch_fn=_cache_only_early,
-            fetched_cache=fetched_by_url,
-            max_chars_excerpt=min(1200, max_chars_per_page),
-            max_chars_fetch=max_chars_per_page,
-            worker_model="seed_harvest",
-        )
-        drafts = list(early or [])
-    except Exception as exc:
-        errors.append(
-            CellError(
-                cell_id=cell_id,
-                message=f"seed harvest failed: {exc}",
-                stage="research",
+            early = harvest_seed_instruments(
+                resolved,
+                instruments=_instruments_for_cell(resolved),
+                seed_urls=seed_urls,
+                fetch_fn=_cache_only_early,
+                fetched_cache=fetched_by_url,
+                max_chars_excerpt=min(1200, max_chars_per_page),
+                max_chars_fetch=max_chars_per_page,
+                worker_model="seed_harvest",
             )
-        )
+            drafts = list(early or [])
+        except Exception as exc:
+            errors.append(
+                CellError(
+                    cell_id=cell_id,
+                    message=f"seed harvest failed: {exc}",
+                    stage="research",
+                )
+            )
 
-    # Quality early-exit: need enough drafts AND non-empty excerpts (real page text).
-    rich = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
-    if len(rich) >= 3:
-        return {
-            "drafts": rich,
-            **({"cell_errors": errors} if errors else {}),
-        }
+        # Quality early-exit: need enough drafts AND non-empty excerpts (real page text).
+        rich = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
+        if len(rich) >= 3:
+            return {
+                "drafts": rich,
+                **({"cell_errors": errors} if errors else {}),
+            }
 
     # Seeded cells: seeds+harvest are sufficient; skip web search entirely.
     skip_search = bool(seed_urls) or seed_bodies >= 2
@@ -2261,6 +2263,45 @@ def run_research_cell(
                 stage="research",
             )
         )
+
+    # Prefer drafts with real page text; drop hollow-only sets when mixed.
+    rich_final = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
+    if rich_final:
+        drafts = rich_final
+    elif not rich_final:
+        # Last chance: force-fetch a few URLs so quality gate has real excerpts.
+        candidates = list(seed_urls[:4])
+        for item in search_hits:
+            u = str(item.get("url") or "").strip()
+            if u.startswith("http") and u not in candidates:
+                candidates.append(u)
+            if len(candidates) >= 6:
+                break
+        if candidates:
+            try:
+                rescued = harvest_seed_instruments(
+                    resolved,
+                    instruments=_instruments_for_cell(resolved),
+                    seed_urls=candidates,
+                    fetch_fn=fetch,
+                    fetched_cache=fetched_by_url,
+                    max_chars_excerpt=min(1200, max_chars_per_page),
+                    max_chars_fetch=max_chars_per_page,
+                    worker_model="seed_harvest",
+                )
+                rich_rescue = [
+                    d for d in (rescued or []) if (getattr(d, "excerpt", None) or "").strip()
+                ]
+                if rich_rescue:
+                    drafts = rich_rescue
+            except Exception as exc:
+                errors.append(
+                    CellError(
+                        cell_id=cell_id,
+                        message=f"rescue harvest failed: {exc}",
+                        stage="research",
+                    )
+                )
 
     # Hard empty-search signal only if we still have nothing to accept.
     if search_empty and not drafts:
