@@ -49,3 +49,4 @@ Thumbs.db
 # Meta legal dossiers
 data/dossiers/*
 !data/dossiers/.gitkeep
+.worktrees/
