@@ -133,13 +133,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Only run the first N explicit cells (mini eval / smoke). Default: all.",
     )
-    parser.add_argument(
-        "--limit-cells",
-        type=int,
-        default=None,
-        metavar="N",
-        help="Only run the first N explicit cells (mini eval / smoke)",
-    )
     return parser.parse_args(argv)
 
 
