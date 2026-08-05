@@ -1885,9 +1885,9 @@ def run_research_cell(
     search_fn: SearchFn | None = None,
     fetch_fn: FetchFn | None = None,
     llm: Any | None = None,
-    max_results_per_query: int = 3,
-    max_urls: int = 6,
-    max_chars_per_page: int = 8000,
+    max_results_per_query: int = 2,
+    max_urls: int = 5,
+    max_chars_per_page: int = 5000,
     max_fetch_workers: int = 12,
 ) -> dict[str, list[Any]]:
     """Core research worker with injectable tools/LLM (for tests).
@@ -1944,7 +1944,7 @@ def run_research_cell(
         return url, text, None
 
     # Prefetch top seeds first; quality early-exit needs non-empty excerpts.
-    seed_prefetch = seed_urls[: min(4, len(seed_urls))]
+    seed_prefetch = seed_urls[: min(3, len(seed_urls))]
     fetched_by_url: dict[str, str] = {}
     if seed_prefetch:
         pre_pool = _DaemonThreadPoolExecutor(max_workers=min(4, len(seed_prefetch)))
