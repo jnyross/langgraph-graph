@@ -8,7 +8,7 @@ import json
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Mapping
 
@@ -46,6 +46,28 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
+
+# exp_007: cap queries per cell and bound seed-first search wall-clock.
+DEFAULT_MAX_QUERIES = 6
+DEFAULT_SEARCH_BUDGET_S = 10.0
+_SEARCH_QUERY_WORKERS = 4
+
+
+def _max_queries() -> int:
+    try:
+        return max(1, int(os.getenv("META_LEGAL_MAX_QUERIES", "") or DEFAULT_MAX_QUERIES))
+    except ValueError:
+        return DEFAULT_MAX_QUERIES
+
+
+def _search_budget_s() -> float:
+    try:
+        return max(
+            0.1, float(os.getenv("META_LEGAL_SEARCH_BUDGET_S", "") or DEFAULT_SEARCH_BUDGET_S)
+        )
+    except ValueError:
+        return DEFAULT_SEARCH_BUDGET_S
+
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "research.md"
 
@@ -1228,7 +1250,13 @@ def _instruments_for_cell(cell: ResearchCell) -> tuple[str, ...]:
 
 
 def build_search_queries(cell: ResearchCell) -> list[str]:
-    """Build instrument-first legal discovery queries (Meta not leading every query)."""
+    """Build prioritized legal discovery queries, capped at META_LEGAL_MAX_QUERIES.
+
+    Priority order (exp_007): instrument site-restricted queries first (official
+    hosts yield the best hits), then generic instrument official-text queries,
+    then the domain-level sweep. The single subject (Meta) nexus query is
+    appended only when the cap leaves room — dropped when over cap.
+    """
     subject = (cell.subject or "Meta").strip() or "Meta"
     jurisdiction = (cell.jurisdiction or "").strip() or "Unknown"
     jid = (cell.jurisdiction_id or slugify(normalize_jurisdiction(jurisdiction))).strip()
@@ -1236,46 +1264,52 @@ def build_search_queries(cell: ResearchCell) -> list[str]:
     instruments = _instruments_for_cell(cell)
     site_hints = _JURISDICTION_SITE_HINTS.get(jid, ())
     domain_label = domain_id.replace("_", " ").strip() or "regulation"
+    cap = _max_queries()
 
-    queries: list[str] = []
+    prioritized: list[str] = []
 
-    # For each instrument: official text + site-restricted variants.
+    # 1) Instrument site-restricted (highest precision: official hosts).
     for instrument in instruments:
         name = (instrument or "").strip()
         if not name:
             continue
-        queries.append(f"{name} official text")
-        queries.append(f"{name} {jurisdiction} official text")
         for site in site_hints[:3]:
-            queries.append(f"{name} {site}")
+            prioritized.append(f"{name} {site}")
 
-    # Domain-level official legislation sweep (no subject leading).
+    # 2) Instrument generic official-text queries.
+    for instrument in instruments:
+        name = (instrument or "").strip()
+        if not name:
+            continue
+        prioritized.append(f"{name} official text")
+        prioritized.append(f"{name} {jurisdiction} official text")
+
+    # 3) Domain-level official legislation sweep (generic, last).
     if site_hints:
-        queries.append(f"{jurisdiction} {domain_label} law regulation {site_hints[0]}")
+        prioritized.append(f"{jurisdiction} {domain_label} law regulation {site_hints[0]}")
     else:
-        queries.append(
+        prioritized.append(
             f"{jurisdiction} {domain_label} legislation statute regulation official text"
         )
 
-    # Exactly one subject-nexus query (Meta-bearing) — always retained.
-    subject_query = f"{subject} {jurisdiction} {domain_label} legal obligations regulation"
-
-    # De-dupe while preserving order; reserve one slot for subject nexus.
+    # De-dupe preserving priority order; hard cap.
     seen: set[str] = set()
     out: list[str] = []
-    budget = 23  # leave room for subject_query
-    for q in queries:
+    for q in prioritized:
         key = " ".join(q.lower().split())
         if not key or key in seen:
             continue
         seen.add(key)
         out.append(" ".join(q.split()))
-        if len(out) >= budget:
+        if len(out) >= cap:
             break
 
-    subject_key = " ".join(subject_query.lower().split())
-    if subject_key and subject_key not in seen:
-        out.append(" ".join(subject_query.split()))
+    # Subject (Meta) nexus query only when the cap leaves room.
+    if len(out) < cap:
+        subject_query = f"{subject} {jurisdiction} {domain_label} legal obligations regulation"
+        subject_key = " ".join(subject_query.lower().split())
+        if subject_key and subject_key not in seen:
+            out.append(" ".join(subject_query.split()))
     return out
 
 
@@ -1720,35 +1754,65 @@ def run_research_cell(
     cell_id = resolved.cell_id
     worker_model = _resolve_worker_model(llm)
 
-    # --- search ---
+    # --- search (exp_007: concurrent capped queries; seed-first budget) ---
+    seed_urls = seed_urls_for_cell(resolved)
+    queries = build_search_queries(resolved)
     search_hits: list[dict[str, str]] = []
-    try:
-        for query in build_search_queries(resolved):
+
+    def _search_one(query: str) -> tuple[list[dict[str, str]], str | None]:
+        """Return (hits, error_message). Never raises."""
+        try:
+            return search(query, max_results_per_query) or [], None
+        except TypeError:
+            # Allow fns that only take query
             try:
-                hits = search(query, max_results_per_query) or []
-            except TypeError:
-                # Allow fns that only take query
+                return search(query) or [], None  # type: ignore[misc,call-arg]
+            except Exception as exc:
+                return [], f"search failed for query {query!r}: {exc}"
+        except Exception as exc:
+            return [], f"search failed for query {query!r}: {exc}"
+
+    # Aggressive wall-clock budget when curated seeds exist: on expiry proceed
+    # with seeds plus whatever hits already arrived.
+    budget_s: float | None = _search_budget_s() if seed_urls else None
+    hits_by_query: dict[str, list[dict[str, str]]] = {}
+    try:
+        if queries:
+            pool = _DaemonThreadPoolExecutor(
+                max_workers=min(_SEARCH_QUERY_WORKERS, len(queries))
+            )
+            try:
+                futures = {pool.submit(_search_one, q): q for q in queries}
                 try:
-                    hits = search(query) or []  # type: ignore[misc,call-arg]
-                except Exception as exc:
+                    for fut in as_completed(futures, timeout=budget_s):
+                        query = futures[fut]
+                        try:
+                            hits, err_msg = fut.result()
+                        except Exception as exc:
+                            hits, err_msg = [], f"search failed for query {query!r}: {exc}"
+                        if err_msg:
+                            errors.append(
+                                CellError(cell_id=cell_id, message=err_msg, stage="research")
+                            )
+                        hits_by_query[query] = hits
+                except FuturesTimeout:
                     errors.append(
                         CellError(
                             cell_id=cell_id,
-                            message=f"search failed for query {query!r}: {exc}",
+                            message=(
+                                f"search budget {budget_s:.1f}s exhausted; proceeding with "
+                                "seeds and partial search hits"
+                            ),
                             stage="research",
                         )
                     )
-                    hits = []
-            except Exception as exc:
-                errors.append(
-                    CellError(
-                        cell_id=cell_id,
-                        message=f"search failed for query {query!r}: {exc}",
-                        stage="research",
-                    )
-                )
-                hits = []
-            for hit in hits:
+                    for fut in futures:
+                        fut.cancel()
+            finally:
+                pool.shutdown(wait=False, cancel_futures=True)
+        # Aggregate in query-priority order so select_urls tiebreaks stay stable.
+        for query in queries:
+            for hit in hits_by_query.get(query, ()):
                 if isinstance(hit, Mapping):
                     search_hits.append(
                         {
@@ -1763,7 +1827,6 @@ def run_research_cell(
         )
 
     # Merge high-confidence primary seeds even when search is empty/partial.
-    seed_urls = seed_urls_for_cell(resolved)
     for seed in seed_urls:
         search_hits.append(
             {

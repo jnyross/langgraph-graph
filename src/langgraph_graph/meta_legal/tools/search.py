@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from typing import Any
@@ -39,14 +40,24 @@ _DDGS_BACKENDS: tuple[str, ...] = (
 _LEGACY_BACKENDS: tuple[str, ...] = ("api", "html", "lite")
 
 # Bound each backend probe so a hung provider cannot stall the worker forever.
-_BACKEND_ATTEMPT_TIMEOUT_SEC = 5.0
+_BACKEND_ATTEMPT_TIMEOUT_SEC = 3.0
 # Overall budget for one parallel backend wave (first non-empty wins).
-_BACKEND_WAVE_TIMEOUT_SEC = 6.0
+_BACKEND_WAVE_TIMEOUT_SEC = 4.0
 
 # In-process cache: (normalized_query, max_results) -> results
 _SEARCH_CACHE: dict[tuple[str, int], list[dict[str, str]]] = {}
 _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 256
+
+# --- global failure circuit breaker (exp_007) ---
+# After N consecutive all-backend-empty searches process-wide, short-circuit
+# further searches to [] for a cooldown window (backends throttled/dead).
+# Env knobs: META_LEGAL_SEARCH_BREAKER_N, META_LEGAL_SEARCH_BREAKER_COOLDOWN_S.
+_BREAKER_DEFAULT_N = 3
+_BREAKER_DEFAULT_COOLDOWN_S = 120.0
+_BREAKER_LOCK = threading.Lock()
+_BREAKER_EMPTY_STREAK = 0
+_BREAKER_OPENED_AT: float | None = None
 
 
 def _normalize_result(item: dict[str, Any]) -> dict[str, str] | None:
@@ -134,6 +145,54 @@ def clear_search_cache() -> None:
     """Clear the in-process search cache (tests / long-running process hygiene)."""
     with _CACHE_LOCK:
         _SEARCH_CACHE.clear()
+
+
+def _breaker_n() -> int:
+    try:
+        return max(1, int(os.getenv("META_LEGAL_SEARCH_BREAKER_N", "") or _BREAKER_DEFAULT_N))
+    except ValueError:
+        return _BREAKER_DEFAULT_N
+
+
+def _breaker_cooldown_s() -> float:
+    try:
+        return max(
+            0.0,
+            float(os.getenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "") or _BREAKER_DEFAULT_COOLDOWN_S),
+        )
+    except ValueError:
+        return _BREAKER_DEFAULT_COOLDOWN_S
+
+
+def _breaker_state() -> str:
+    """Return ``closed`` | ``open`` | ``half_open``. Never raises."""
+    with _BREAKER_LOCK:
+        if _BREAKER_OPENED_AT is None:
+            return "closed"
+        if time.monotonic() - _BREAKER_OPENED_AT < _breaker_cooldown_s():
+            return "open"
+        return "half_open"
+
+
+def _breaker_record(success: bool) -> None:
+    """Track consecutive all-backend-empty searches; trip after N failures."""
+    global _BREAKER_EMPTY_STREAK, _BREAKER_OPENED_AT
+    with _BREAKER_LOCK:
+        if success:
+            _BREAKER_EMPTY_STREAK = 0
+            _BREAKER_OPENED_AT = None
+            return
+        _BREAKER_EMPTY_STREAK += 1
+        if _BREAKER_EMPTY_STREAK >= _breaker_n():
+            _BREAKER_OPENED_AT = time.monotonic()
+
+
+def reset_search_breaker() -> None:
+    """Reset the global search circuit breaker (tests / process hygiene)."""
+    global _BREAKER_EMPTY_STREAK, _BREAKER_OPENED_AT
+    with _BREAKER_LOCK:
+        _BREAKER_EMPTY_STREAK = 0
+        _BREAKER_OPENED_AT = None
 
 
 def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
@@ -287,12 +346,13 @@ def _backend_attempt(
     return _collect_normalized(raw, limit)
 
 
-def _search_ddg(query: str, max_results: int) -> list[dict[str, str]]:
+def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> list[dict[str, str]]:
     """Search via ``ddgs`` (preferred) or legacy ``duckduckgo_search``.
 
     Tries multiple backends in parallel (small pool), retries once on empty,
     de-dupes by URL. Never raises. Bounded by wave/attempt timeouts so a hung
-    backend cannot stall a research cell forever.
+    backend cannot stall a research cell forever. ``single_wave`` limits the
+    probe to one backend wave (used when the failure breaker is half-open).
     """
     ddgs_cls = _import_ddgs_class()
     if ddgs_cls is None:
@@ -354,6 +414,9 @@ def _search_ddg(query: str, max_results: int) -> list[dict[str, str]]:
     if collected:
         return collected[:limit]
 
+    if single_wave:
+        return []
+
     # Single short retry on the first two backends only (transient empties).
     collected = _run_backends(backends[:2])
     if collected:
@@ -370,6 +433,9 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
       2. ddgs / duckduckgo_search if importable
 
     Identical queries are served from an in-process cache within the process.
+    A process-wide circuit breaker short-circuits to ``[]`` for a cooldown
+    window after N consecutive all-backend-empty searches (throttled/dead
+    backends); the first probe after cooldown runs a single backend wave.
     Never raises; returns ``[]`` on any failure or empty input.
     """
     q = (query or "").strip()
@@ -381,16 +447,22 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     if cached is not None:
         return cached[:limit]
 
+    breaker = _breaker_state()
+    if breaker == "open":
+        return []
+
     try:
         if os.getenv("TAVILY_API_KEY"):
             hits = _search_tavily(q, limit)
             if hits:
                 out = hits[:limit]
                 _cache_put(q, limit, out)
+                _breaker_record(True)
                 return out
-        out = _search_ddg(q, limit)[:limit]
+        out = _search_ddg(q, limit, single_wave=breaker == "half_open")[:limit]
         # Cache empty results too to avoid hammering dead backends for same query.
         _cache_put(q, limit, out)
+        _breaker_record(bool(out))
         return out
     except Exception:
         return []

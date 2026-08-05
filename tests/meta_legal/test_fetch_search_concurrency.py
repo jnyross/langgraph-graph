@@ -13,7 +13,11 @@ from langgraph_graph.meta_legal.run_config import DEFAULT_MAX_CONCURRENCY, max_c
 from langgraph_graph.meta_legal.tools import fetch as fetch_mod
 from langgraph_graph.meta_legal.tools import search as search_mod
 from langgraph_graph.meta_legal.tools.fetch import fetch_url
-from langgraph_graph.meta_legal.tools.search import clear_search_cache, web_search
+from langgraph_graph.meta_legal.tools.search import (
+    clear_search_cache,
+    reset_search_breaker,
+    web_search,
+)
 
 
 class _FakeLLM:
@@ -114,9 +118,10 @@ def test_fetch_url_prefers_html_accept_header() -> None:
 
 def test_web_search_caches_identical_queries() -> None:
     clear_search_cache()
+    reset_search_breaker()
     calls = {"n": 0}
 
-    def fake_ddg(query: str, max_results: int) -> list[dict[str, str]]:
+    def fake_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
         calls["n"] += 1
         return [
             {
@@ -135,6 +140,130 @@ def test_web_search_caches_identical_queries() -> None:
     assert a[0]["url"] == b[0]["url"]
     assert calls["n"] == 1
     clear_search_cache()
+
+
+def test_backend_timeouts_cut_for_exp007() -> None:
+    assert search_mod._BACKEND_ATTEMPT_TIMEOUT_SEC == 3.0
+    assert search_mod._BACKEND_WAVE_TIMEOUT_SEC == 4.0
+
+
+def test_search_breaker_opens_after_consecutive_empty(monkeypatch: Any) -> None:
+    clear_search_cache()
+    reset_search_breaker()
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_N", raising=False)
+    monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", raising=False)
+    calls = {"n": 0}
+
+    def empty_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
+        calls["n"] += 1
+        return []
+
+    with patch.object(search_mod, "_search_ddg", side_effect=empty_ddg):
+        for i in range(3):
+            assert web_search(f"dead query {i}", 5) == []
+        assert calls["n"] == 3
+        # Breaker tripped: further distinct queries short-circuit, no backend calls.
+        assert web_search("dead query fresh", 5) == []
+        assert web_search("another dead query", 5) == []
+    assert calls["n"] == 3
+    assert search_mod._breaker_state() == "open"
+    clear_search_cache()
+    reset_search_breaker()
+
+
+def test_search_breaker_half_open_single_wave_then_recovers(monkeypatch: Any) -> None:
+    clear_search_cache()
+    reset_search_breaker()
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    # Zero cooldown: tripped breaker is immediately half-open (no sleeping).
+    monkeypatch.setenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "0")
+    seen_waves: list[bool] = []
+    hits_next = {"on": False}
+
+    def ddg(query: str, max_results: int, *, single_wave: bool = False) -> list[dict[str, str]]:
+        seen_waves.append(single_wave)
+        if hits_next["on"]:
+            return [{"title": "Hit", "url": "https://example.com/x", "snippet": "s"}]
+        return []
+
+    with patch.object(search_mod, "_search_ddg", side_effect=ddg):
+        for i in range(3):
+            web_search(f"probe {i}", 5)
+        assert seen_waves == [False, False, False]
+        # Half-open probe runs exactly one backend wave.
+        hits_next["on"] = True
+        assert web_search("probe recovery", 5)
+        assert seen_waves[-1] is True
+        # Success closes the breaker: next search is a normal multi-wave one.
+        assert web_search("probe after recovery", 5)
+        assert seen_waves[-1] is False
+    clear_search_cache()
+    reset_search_breaker()
+
+
+def test_build_search_queries_capped_and_prioritized(monkeypatch: Any) -> None:
+    from langgraph_graph.meta_legal.nodes.research_cell import build_search_queries
+
+    monkeypatch.delenv("META_LEGAL_MAX_QUERIES", raising=False)
+    cell = ResearchCell(
+        cell_id="european_union::privacy",
+        jurisdiction="European Union",
+        jurisdiction_id="european_union",
+        domain="privacy",
+        domain_id="privacy",
+        subject="Meta",
+        status="researching",
+    )
+    queries = build_search_queries(cell)
+    assert 1 <= len(queries) <= 6
+    # Site-restricted instrument queries lead; Meta-nexus dropped when over cap.
+    assert "site:" in queries[0]
+    assert not any(q.lower().startswith("meta ") for q in queries)
+
+    monkeypatch.setenv("META_LEGAL_MAX_QUERIES", "30")
+    wide = build_search_queries(cell)
+    assert len(wide) > 6
+    # With room under the cap, the single Meta-nexus query is retained.
+    assert sum(1 for q in wide if q.lower().startswith("meta ")) == 1
+
+
+def test_search_budget_slow_search_still_emits_harvest_drafts(monkeypatch: Any) -> None:
+    """Acceptance: search_fn sleeping 5s with a 2s budget finishes the cell <5s
+    wall and still emits seed-harvest drafts."""
+    import time as _time
+
+    monkeypatch.setenv("META_LEGAL_SEARCH_BUDGET_S", "2")
+    cell = ResearchCell(
+        cell_id="european_union::privacy",
+        jurisdiction="European Union",
+        jurisdiction_id="european_union",
+        domain="privacy",
+        domain_id="privacy",
+        subject="Meta",
+        status="researching",
+    )
+
+    def slow_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
+        _time.sleep(5)
+        return []
+
+    def fetch_fn(url: str, max_chars: int = 12000) -> str:
+        return "Regulation (EU) 2016/679 (GDPR) official text."[:max_chars]
+
+    llm = _FakeLLM('{"drafts":[]}')
+
+    started = _time.monotonic()
+    result = run_research_cell(cell, search_fn=slow_search, fetch_fn=fetch_fn, llm=llm)
+    elapsed = _time.monotonic() - started
+
+    assert elapsed < 5.0, f"cell took {elapsed:.2f}s; budget did not bound search"
+    drafts = result["drafts"]
+    assert drafts, "expected seed-harvest drafts despite exhausted search budget"
+    assert any(getattr(d, "worker_model", "") == "seed_harvest" for d in drafts)
+    assert any(
+        "search budget" in err.message for err in result.get("cell_errors", [])
+    )
 
 
 def test_run_research_cell_fetches_urls_concurrently() -> None:
