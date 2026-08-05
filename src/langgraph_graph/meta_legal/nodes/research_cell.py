@@ -1565,13 +1565,42 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
 
 
 def _call_llm(llm: Any, messages: list[dict[str, str]]) -> Any:
-    """Invoke chat model; on OpenRouter/HTTP 429 retry once with short backoff."""
+    """Invoke chat model; on OpenRouter/HTTP 429 retry once with short backoff.
+
+    Also enforces a hard wall-clock timeout around each invoke (thread future)
+    because httpx/OpenAI client timeouts sometimes fail to interrupt stuck TLS
+    reads under high concurrency.
+    """
+
+    def _timeout_s() -> float:
+        try:
+            return max(
+                5.0,
+                float(os.getenv("META_LEGAL_LLM_TIMEOUT_S", "") or 60.0),
+            )
+        except ValueError:
+            return 60.0
 
     def _invoke_once() -> Any:
+        timeout = _timeout_s()
+
+        def _raw() -> Any:
+            try:
+                return llm.invoke(messages)
+            except Exception:
+                return llm(messages)
+
+        # Single-shot future so a wedged SSL read cannot pin the cell forever.
+        pool = _DaemonThreadPoolExecutor(max_workers=1)
         try:
-            return llm.invoke(messages)
-        except Exception:
-            return llm(messages)
+            fut = pool.submit(_raw)
+            try:
+                return fut.result(timeout=timeout)
+            except FuturesTimeout as exc:
+                fut.cancel()
+                raise TimeoutError(f"llm invoke exceeded {timeout:.0f}s") from exc
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     try:
         return _invoke_once()
