@@ -291,14 +291,14 @@ def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
     completed: subprocess.CompletedProcess[str] | None = None
     try:
         # Don't queue forever under cell stampede; budget owns wall-clock.
-        acquired = sem.acquire(timeout=8.0)
+        acquired = sem.acquire(timeout=4.0)
         if not acquired:
             return []
         completed = subprocess.run(
             ["firecrawl", "search", q, "--limit", str(limit), "--json"],
             capture_output=True,
             text=True,
-            timeout=12,
+            timeout=8,
         )
     except FileNotFoundError:
         with _FIRECRAWL_CLI_LOCK:

@@ -47,10 +47,10 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
 
-# exp_007: cap queries per cell and bound seed-first search wall-clock.
-DEFAULT_MAX_QUERIES = 6
-DEFAULT_SEARCH_BUDGET_S = 10.0
-_SEARCH_QUERY_WORKERS = 4
+# exp_007/010: cap queries per cell and bound search wall-clock (all cells).
+DEFAULT_MAX_QUERIES = 4
+DEFAULT_SEARCH_BUDGET_S = 6.0
+_SEARCH_QUERY_WORKERS = 6
 
 
 def _max_queries() -> int:
@@ -1885,7 +1885,7 @@ def run_research_cell(
     search_fn: SearchFn | None = None,
     fetch_fn: FetchFn | None = None,
     llm: Any | None = None,
-    max_results_per_query: int = 5,
+    max_results_per_query: int = 3,
     max_urls: int = 6,
     max_chars_per_page: int = 8000,
     max_fetch_workers: int = 12,
@@ -1913,7 +1913,7 @@ def run_research_cell(
     cell_id = resolved.cell_id
     worker_model = _resolve_worker_model(llm)
 
-    # --- search (exp_007: concurrent capped queries; seed-first budget) ---
+    # --- search + optional seed prefetch in parallel ---
     seed_urls = seed_urls_for_cell(resolved)
     queries = build_search_queries(resolved)
     search_hits: list[dict[str, str]] = []
@@ -1923,7 +1923,6 @@ def run_research_cell(
         try:
             return search(query, max_results_per_query) or [], None
         except TypeError:
-            # Allow fns that only take query
             try:
                 return search(query) or [], None  # type: ignore[misc,call-arg]
             except Exception as exc:
@@ -1931,9 +1930,34 @@ def run_research_cell(
         except Exception as exc:
             return [], f"search failed for query {query!r}: {exc}"
 
-    # Aggressive wall-clock budget when curated seeds exist: on expiry proceed
-    # with seeds plus whatever hits already arrived.
-    budget_s: float | None = _search_budget_s() if seed_urls else None
+    def _fetch_one(url: str) -> tuple[str, str, str | None]:
+        """Return (url, text, error_message). Never raises."""
+        try:
+            text = fetch(url, max_chars_per_page) or ""
+        except TypeError:
+            try:
+                text = fetch(url) or ""  # type: ignore[misc,call-arg]
+            except Exception as exc:
+                return url, "", f"fetch failed for {url}: {exc}"
+        except Exception as exc:
+            return url, "", f"fetch failed for {url}: {exc}"
+        return url, text, None
+
+    # Prefetch top seeds while search runs (cache makes later harvest free).
+    seed_prefetch = seed_urls[: min(4, len(seed_urls))]
+    fetched_by_url: dict[str, str] = {}
+    prefetch_pool: _DaemonThreadPoolExecutor | None = None
+    prefetch_futs: dict[Any, str] = {}
+    if seed_prefetch:
+        prefetch_pool = _DaemonThreadPoolExecutor(
+            max_workers=min(4, len(seed_prefetch))
+        )
+        prefetch_futs = {
+            prefetch_pool.submit(_fetch_one, u): u for u in seed_prefetch
+        }
+
+    # Wall-clock budget for every cell (seeded and seedless).
+    budget_s: float = _search_budget_s()
     hits_by_query: dict[str, list[dict[str, str]]] = {}
     try:
         if queries:
@@ -1954,6 +1978,17 @@ def run_research_cell(
                                 CellError(cell_id=cell_id, message=err_msg, stage="research")
                             )
                         hits_by_query[query] = hits
+                        uniq = {
+                            str(h.get("url") or "").split("#", 1)[0].rstrip("/")
+                            for hs in hits_by_query.values()
+                            for h in (hs or [])
+                            if isinstance(h, Mapping) and str(h.get("url") or "").startswith("http")
+                        }
+                        uniq.discard("")
+                        if len(uniq) >= max_urls:
+                            for other in futures:
+                                other.cancel()
+                            break
                 except FuturesTimeout:
                     errors.append(
                         CellError(
@@ -1969,7 +2004,6 @@ def run_research_cell(
                         fut.cancel()
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
-        # Aggregate in query-priority order so select_urls tiebreaks stay stable.
         for query in queries:
             for hit in hits_by_query.get(query, ()):
                 if isinstance(hit, Mapping):
@@ -1985,7 +2019,30 @@ def run_research_cell(
             CellError(cell_id=cell_id, message=f"search loop failed: {exc}", stage="research")
         )
 
-    # Merge high-confidence primary seeds even when search is empty/partial.
+    # Collect seed prefetch results.
+    if prefetch_futs:
+        for fut, url in prefetch_futs.items():
+            try:
+                got_url, text, err_msg = fut.result(timeout=0.1)
+            except Exception:
+                try:
+                    got_url, text, err_msg = fut.result(timeout=12.0)
+                except Exception as exc:
+                    errors.append(
+                        CellError(
+                            cell_id=cell_id,
+                            message=f"seed prefetch failed for {url}: {exc}",
+                            stage="research",
+                        )
+                    )
+                    continue
+            if err_msg:
+                errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
+            if (text or "").strip():
+                fetched_by_url[got_url] = text.strip()
+    if prefetch_pool is not None:
+        prefetch_pool.shutdown(wait=False, cancel_futures=True)
+
     for seed in seed_urls:
         search_hits.append(
             {
@@ -1995,11 +2052,9 @@ def run_research_cell(
             }
         )
     search_empty = not search_hits
-    # Continue even when search_empty: seed harvest / aggregator floor can still emit drafts.
 
     urls = select_urls(search_hits, limit=max_urls)
     if not urls:
-        # Fall back to any http URLs from hits + seeds (ignore host ranking).
         fallback: list[str] = []
         seen_fb: set[str] = set()
         for item in search_hits:
@@ -2015,10 +2070,8 @@ def run_research_cell(
                 break
         urls = fallback
 
-    # Ensure seeds remain in the fetch list even if ranking dropped them.
     if seed_urls:
         seen_urls = {u.split("#", 1)[0].rstrip("/") for u in urls}
-        # Prefer a few high-value seeds beyond search hits (rest still harvested).
         seed_budget = min(4, len(seed_urls))
         added = 0
         for seed in seed_urls:
@@ -2032,25 +2085,18 @@ def run_research_cell(
             added += 1
         urls = urls[: max(max_urls, min(len(urls), max_urls + seed_budget))]
 
-    # --- fetch (concurrent; preserve URL order in context) ---
-    def _fetch_one(url: str) -> tuple[str, str, str | None]:
-        """Return (url, text, error_message). Never raises."""
-        try:
-            text = fetch(url, max_chars_per_page) or ""
-        except TypeError:
-            try:
-                text = fetch(url) or ""  # type: ignore[misc,call-arg]
-            except Exception as exc:
-                return url, "", f"fetch failed for {url}: {exc}"
-        except Exception as exc:
-            return url, "", f"fetch failed for {url}: {exc}"
-        return url, text, None
-
-    fetched_by_url: dict[str, str] = {}
-    workers = max(1, min(int(max_fetch_workers or 12), len(urls) or 1))
-    if urls:
+    # Fetch remaining URLs (skip already-prefetched seeds).
+    remaining = [u for u in urls if u not in fetched_by_url]
+    seed_hits = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
+    # When curated seeds already yielded body text, only pull a couple of search
+    # hits for diversity — quality is preserved via seed harvest + LLM context.
+    if seed_hits >= 2:
+        search_only = [u for u in remaining if u not in seed_urls]
+        remaining = search_only[:2]
+    workers = max(1, min(int(max_fetch_workers or 12), len(remaining) or 1))
+    if remaining:
         with _DaemonThreadPoolExecutor(max_workers=workers) as pool:
-            future_map = {pool.submit(_fetch_one, url): url for url in urls}
+            future_map = {pool.submit(_fetch_one, url): url for url in remaining}
             for fut in as_completed(future_map):
                 url = future_map[fut]
                 try:
@@ -2147,12 +2193,20 @@ def run_research_cell(
 
     # Deterministic floor: curated instruments + seed URLs even if LLM/search flaked.
     try:
-        # Prefer already-fetched pages; harvest may fetch remaining seeds if needed.
+        harvest_fetch = fetch
+        # If seed prefetch already filled body text, avoid a second network wave.
+        seed_bodies = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
+        if seed_bodies >= 2:
+
+            def _cache_only(url: str, max_chars: int = 12000) -> str:
+                return fetched_by_url.get(url, "") or ""
+
+            harvest_fetch = _cache_only
         harvested = harvest_seed_instruments(
             resolved,
             instruments=_instruments_for_cell(resolved),
             seed_urls=seed_urls,
-            fetch_fn=fetch,
+            fetch_fn=harvest_fetch,
             fetched_cache=fetched_by_url,
             max_chars_excerpt=min(1200, max_chars_per_page),
             max_chars_fetch=max_chars_per_page,
@@ -2182,6 +2236,7 @@ def run_research_cell(
     if errors:
         result["cell_errors"] = errors
     return result
+
 
 
 def research_cell(state: dict[str, Any] | ResearchCell | Any) -> dict[str, list[Any]]:

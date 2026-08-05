@@ -219,7 +219,7 @@ def test_build_search_queries_capped_and_prioritized(monkeypatch: Any) -> None:
         status="researching",
     )
     queries = build_search_queries(cell)
-    assert 1 <= len(queries) <= 6
+    assert 1 <= len(queries) <= 4
     # Site-restricted instrument queries lead; Meta-nexus dropped when over cap.
     assert "site:" in queries[0]
     assert not any(q.lower().startswith("meta ") for q in queries)
