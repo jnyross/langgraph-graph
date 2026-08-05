@@ -82,11 +82,8 @@ def reply_node(state: AgentState) -> dict[str, Any]:
     return {"output": text, "messages": state.messages + [{"role": "assistant", "content": text}]}
 
 
-def build_graph():
-    """Compile the graph with an in-memory checkpointer.
-
-    Swap MemorySaver for SqliteSaver/PostgresSaver for durable runs.
-    """
+def _assemble_graph() -> StateGraph:
+    """Build the StateGraph topology (nodes/edges only; not compiled)."""
     g = StateGraph(AgentState)
     g.add_node("plan", plan_node)
     g.add_node("act", act_node)
@@ -96,5 +93,21 @@ def build_graph():
     g.add_edge("plan", "act")
     g.add_edge("act", "reply")
     g.add_edge("reply", END)
+    return g
 
-    return g.compile(checkpointer=MemorySaver())
+
+def build_graph(checkpointer: Any = None):
+    """Compile the graph for local CLI / scripts.
+
+    Defaults to MemorySaver when checkpointer is None. Pass an explicit
+    checkpointer to use it, or checkpointer=False to compile with none.
+    """
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+    elif checkpointer is False:
+        checkpointer = None
+    return _assemble_graph().compile(checkpointer=checkpointer)
+
+
+# LangSmith Studio / `langgraph dev` entry — Agent Server injects a checkpointer.
+graph = _assemble_graph().compile()

@@ -10,9 +10,12 @@ license = { text = "MIT" }
 dependencies = [
     "langgraph>=0.2.60",
     "langchain-core>=0.3.30",
-    "langchain-openai>=0.2.0",   # works with Ollama/MLX via OpenAI-compatible API
+    "langchain-openai>=0.2.0",   # Ollama/MLX/OpenRouter via OpenAI-compatible API
+    "httpx>=0.27",
+    "duckduckgo-search>=6.0",
     "pydantic>=2.9",
     "python-dotenv>=1.0",
+    "ddgs>=9.14.4",
 ]
 
 [project.optional-dependencies]
@@ -20,10 +23,21 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.11",
+    "langgraph-cli[inmem]>=0.4.14",
+    "debugpy>=1.8",
 ]
 local = [
     # Optional local helpers
     "litellm>=1.50",        # multi-provider gateway
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "langgraph-cli[inmem]>=0.4.14",
+    "debugpy>=1.8",
 ]
 
 [build-system]
@@ -41,5 +55,5 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]

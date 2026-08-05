@@ -1,0 +1,2252 @@
+{
+  "version": "1",
+  "subject": "Meta",
+  "generated_at": "2026-08-05T10:18:23Z",
+  "notes": "Operating-footprint oriented catalog for Meta (Facebook, Instagram, WhatsApp) full-grid legal research. Includes EU supranational + member countries, other UN members with practical consumer Meta availability, US states with comprehensive privacy and/or youth-safety/AADC/social-minor laws, and a minimal US city set. Excludes known total/near-total consumer blocks (e.g. PRC, DPRK, Iran). Some restricted markets (Russia, Belarus) remain for legal-status research with cautious rationales. Ids are stable slugs aligned with meta_legal.slugify; georgia_us disambiguates the U.S. state from the country Georgia. Not legal advice; provenance is desk research for scaffolding full-grid runs.",
+  "jurisdictions": [
+    {
+      "id": "european_union",
+      "name": "European Union",
+      "level": "supranational",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Primary Meta platform obligations via GDPR, DSA, DMA, AI Act, and related instruments."
+    },
+    {
+      "id": "council_of_europe",
+      "name": "Council of Europe",
+      "level": "supranational",
+      "parent_id": null,
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "Convention 108+/human-rights framework relevant to platform data protection and child online safety."
+    },
+    {
+      "id": "austria",
+      "name": "Austria",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; DSA/GDPR apply with national DPAs and media/youth rules."
+    },
+    {
+      "id": "belgium",
+      "name": "Belgium",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; strong privacy enforcement and e-commerce consumer rules."
+    },
+    {
+      "id": "bulgaria",
+      "name": "Bulgaria",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; national implementation of DSA and data protection."
+    },
+    {
+      "id": "croatia",
+      "name": "Croatia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; platform and media regulation under EU + national law."
+    },
+    {
+      "id": "cyprus",
+      "name": "Cyprus",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; data protection and electronic communications rules."
+    },
+    {
+      "id": "czech_republic",
+      "name": "Czech Republic",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; competition and consumer protection relevant to platforms."
+    },
+    {
+      "id": "denmark",
+      "name": "Denmark",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; strict privacy culture and digital services enforcement."
+    },
+    {
+      "id": "estonia",
+      "name": "Estonia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; advanced digital-government and data protection framework."
+    },
+    {
+      "id": "finland",
+      "name": "Finland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; strong youth-protection and privacy norms."
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Major EU market; CNIL, competition (ADLC), DSA coordinator, and youth/hate-speech rules."
+    },
+    {
+      "id": "germany",
+      "name": "Germany",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Largest EU market; BDSG, NetzDG legacy, DSA, competition, and youth media protection (JMStV)."
+    },
+    {
+      "id": "greece",
+      "name": "Greece",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; data protection and audiovisual/media rules for platforms."
+    },
+    {
+      "id": "hungary",
+      "name": "Hungary",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; national media and data protection overlay on EU rules."
+    },
+    {
+      "id": "ireland",
+      "name": "Ireland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU HQ jurisdiction for Meta Ireland; DPC lead supervisory authority under GDPR."
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Major EU market; AGCM competition, Garante privacy, and DSA enforcement."
+    },
+    {
+      "id": "latvia",
+      "name": "Latvia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; national DPA and digital services implementation."
+    },
+    {
+      "id": "lithuania",
+      "name": "Lithuania",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; data protection and electronic communications rules."
+    },
+    {
+      "id": "luxembourg",
+      "name": "Luxembourg",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; significant corporate and data-protection nexus."
+    },
+    {
+      "id": "malta",
+      "name": "Malta",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; gaming-adjacent and data protection regulation."
+    },
+    {
+      "id": "netherlands",
+      "name": "Netherlands",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; AP privacy enforcement and consumer/competition authorities."
+    },
+    {
+      "id": "poland",
+      "name": "Poland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Large EU market; UODO privacy, UOKiK competition, and platform rules."
+    },
+    {
+      "id": "portugal",
+      "name": "Portugal",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; CNPD privacy and digital services rules."
+    },
+    {
+      "id": "romania",
+      "name": "Romania",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; national DSA/GDPR implementation and consumer law."
+    },
+    {
+      "id": "slovakia",
+      "name": "Slovakia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; data protection and media regulation."
+    },
+    {
+      "id": "slovenia",
+      "name": "Slovenia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; privacy and electronic communications rules."
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Major EU market; AEPD privacy, CNMC competition, and youth/content rules."
+    },
+    {
+      "id": "sweden",
+      "name": "Sweden",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EU member; IMY privacy and strong consumer digital rules."
+    },
+    {
+      "id": "united_kingdom",
+      "name": "United Kingdom",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Post-Brexit UK GDPR, Online Safety Act, CMA digital competition, ICO enforcement."
+    },
+    {
+      "id": "norway",
+      "name": "Norway",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EEA; GDPR-aligned and strong consumer/platform rules."
+    },
+    {
+      "id": "iceland",
+      "name": "Iceland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EEA; GDPR-aligned data protection framework."
+    },
+    {
+      "id": "liechtenstein",
+      "name": "Liechtenstein",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "EEA microstate with GDPR-aligned rules; limited but formal Meta availability."
+    },
+    {
+      "id": "switzerland",
+      "name": "Switzerland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "nFADP privacy reform; major market with platform consumer exposure."
+    },
+    {
+      "id": "ukraine",
+      "name": "Ukraine",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Active Meta market; wartime digital and data rules evolving."
+    },
+    {
+      "id": "moldova",
+      "name": "Moldova",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Consumer Meta presence; EU-approximation data/media reforms."
+    },
+    {
+      "id": "albania",
+      "name": "Albania",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; EU-candidate digital/media approximation."
+    },
+    {
+      "id": "north_macedonia",
+      "name": "North Macedonia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; EU-candidate privacy/media reforms."
+    },
+    {
+      "id": "montenegro",
+      "name": "Montenegro",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; EU-candidate digital regulation path."
+    },
+    {
+      "id": "serbia",
+      "name": "Serbia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Significant regional Meta market; data protection and media laws."
+    },
+    {
+      "id": "bosnia_and_herzegovina",
+      "name": "Bosnia and Herzegovina",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; entity-level media and privacy overlays."
+    },
+    {
+      "id": "kosovo",
+      "name": "Kosovo",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta consumer presence; evolving data and media regulation."
+    },
+    {
+      "id": "georgia",
+      "name": "Georgia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; data protection law and platform content rules."
+    },
+    {
+      "id": "armenia",
+      "name": "Armenia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; personal data protection framework."
+    },
+    {
+      "id": "azerbaijan",
+      "name": "Azerbaijan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available with content/localization pressures."
+    },
+    {
+      "id": "united_states",
+      "name": "United States",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Core Meta HQ market; federal sectoral privacy, state privacy/youth laws, antitrust, IP, accessibility (ADA)."
+    },
+    {
+      "id": "canada",
+      "name": "Canada",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PIPEDA/CPPA track, provincial privacy, Competition Bureau digital enforcement."
+    },
+    {
+      "id": "mexico",
+      "name": "Mexico",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "LFPDPPP privacy, COFECE competition, large Meta user base."
+    },
+    {
+      "id": "brazil",
+      "name": "Brazil",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "LGPD, Marco Civil, youth/online safety bills, CADE competition; top-tier Meta market."
+    },
+    {
+      "id": "argentina",
+      "name": "Argentina",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPA privacy, consumer and competition rules; major Spanish-language market."
+    },
+    {
+      "id": "chile",
+      "name": "Chile",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Updated privacy bill track and consumer platform rules."
+    },
+    {
+      "id": "colombia",
+      "name": "Colombia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Habeas data regime and SIC enforcement; large Meta user base."
+    },
+    {
+      "id": "peru",
+      "name": "Peru",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection law and consumer rules for platforms."
+    },
+    {
+      "id": "ecuador",
+      "name": "Ecuador",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law and digital consumer framework."
+    },
+    {
+      "id": "uruguay",
+      "name": "Uruguay",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Strong regional privacy law; Meta consumer presence."
+    },
+    {
+      "id": "paraguay",
+      "name": "Paraguay",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection framework and platform consumer market."
+    },
+    {
+      "id": "bolivia",
+      "name": "Bolivia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; emerging data and consumer digital rules."
+    },
+    {
+      "id": "venezuela",
+      "name": "Venezuela",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Constrained but non-zero Meta consumer use; complex legal environment."
+    },
+    {
+      "id": "guatemala",
+      "name": "Guatemala",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Central America Meta market; data and consumer rules."
+    },
+    {
+      "id": "honduras",
+      "name": "Honduras",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; consumer and telecom overlay."
+    },
+    {
+      "id": "el_salvador",
+      "name": "El Salvador",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; digital and consumer regulation."
+    },
+    {
+      "id": "nicaragua",
+      "name": "Nicaragua",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available with political/content constraints."
+    },
+    {
+      "id": "costa_rica",
+      "name": "Costa Rica",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; stable Meta consumer market."
+    },
+    {
+      "id": "panama",
+      "name": "Panama",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection and commerce hub with Meta presence."
+    },
+    {
+      "id": "dominican_republic",
+      "name": "Dominican Republic",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Caribbean Meta market; data protection statute."
+    },
+    {
+      "id": "jamaica",
+      "name": "Jamaica",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data Protection Act; Meta consumer presence."
+    },
+    {
+      "id": "trinidad_and_tobago",
+      "name": "Trinidad and Tobago",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection statute; Meta available."
+    },
+    {
+      "id": "bahamas",
+      "name": "Bahamas",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; tourism/consumer Meta use."
+    },
+    {
+      "id": "barbados",
+      "name": "Barbados",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data Protection Act; Meta available."
+    },
+    {
+      "id": "haiti",
+      "name": "Haiti",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta messaging-heavy market; limited formal digital law capacity."
+    },
+    {
+      "id": "cuba",
+      "name": "Cuba",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Constrained connectivity but some Meta app use; unique regulatory regime."
+    },
+    {
+      "id": "guyana",
+      "name": "Guyana",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; emerging data protection discussion."
+    },
+    {
+      "id": "suriname",
+      "name": "Suriname",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; Dutch-influenced legal tradition."
+    },
+    {
+      "id": "belize",
+      "name": "Belize",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; common-law consumer framework."
+    },
+    {
+      "id": "india",
+      "name": "India",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "IT Act/Intermediary Rules, DPDP Act, competition (CCI), large Meta user base."
+    },
+    {
+      "id": "indonesia",
+      "name": "Indonesia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDP Law, MR5 platform rules, Kominfo oversight; major WA/IG market."
+    },
+    {
+      "id": "japan",
+      "name": "Japan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "APPI privacy, anti-monopoly digital rules, youth internet environment laws."
+    },
+    {
+      "id": "south_korea",
+      "name": "South Korea",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PIPA, Network Act, youth protection, KFTC platform competition."
+    },
+    {
+      "id": "australia",
+      "name": "Australia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Privacy Act reforms, Online Safety Act, ACCC digital platforms work."
+    },
+    {
+      "id": "new_zealand",
+      "name": "New Zealand",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Privacy Act 2020 and harmful digital communications framework."
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPA, Online Safety/Code regimes, competition for digital platforms."
+    },
+    {
+      "id": "malaysia",
+      "name": "Malaysia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPA, content and licensing rules affecting platforms."
+    },
+    {
+      "id": "philippines",
+      "name": "Philippines",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data Privacy Act, safe spaces/online harms rules; large FB user base."
+    },
+    {
+      "id": "thailand",
+      "name": "Thailand",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPA and computer-crime/content rules; major Meta market."
+    },
+    {
+      "id": "vietnam",
+      "name": "Vietnam",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Cybersecurity/data localization pressures and content regulation."
+    },
+    {
+      "id": "pakistan",
+      "name": "Pakistan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PECA and draft data protection; large Meta user base."
+    },
+    {
+      "id": "bangladesh",
+      "name": "Bangladesh",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Digital security and draft data protection; major FB market."
+    },
+    {
+      "id": "sri_lanka",
+      "name": "Sri Lanka",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection act; Meta consumer presence."
+    },
+    {
+      "id": "nepal",
+      "name": "Nepal",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Privacy and IT rules; Meta widely used."
+    },
+    {
+      "id": "cambodia",
+      "name": "Cambodia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; content and telecom regulation."
+    },
+    {
+      "id": "laos",
+      "name": "Laos",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; emerging digital rules."
+    },
+    {
+      "id": "myanmar",
+      "name": "Myanmar",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Constrained environment but historical Meta significance; complex legality."
+    },
+    {
+      "id": "mongolia",
+      "name": "Mongolia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection law; Meta available."
+    },
+    {
+      "id": "taiwan",
+      "name": "Taiwan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPA and digital intermediary discussions; major Meta market."
+    },
+    {
+      "id": "hong_kong",
+      "name": "Hong Kong",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPO privacy; distinct from mainland China Meta availability."
+    },
+    {
+      "id": "macau",
+      "name": "Macau",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection regime; Meta available."
+    },
+    {
+      "id": "brunei",
+      "name": "Brunei",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; content and data rules under national law."
+    },
+    {
+      "id": "maldives",
+      "name": "Maldives",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; emerging data protection framework."
+    },
+    {
+      "id": "bhutan",
+      "name": "Bhutan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; small-market digital rules."
+    },
+    {
+      "id": "papua_new_guinea",
+      "name": "Papua New Guinea",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta widely used for communications; cybercrime framework."
+    },
+    {
+      "id": "fiji",
+      "name": "Fiji",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; online safety legislation."
+    },
+    {
+      "id": "timor_leste",
+      "name": "Timor-Leste",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; developing digital legal framework."
+    },
+    {
+      "id": "turkey",
+      "name": "Turkey",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Law 5651 social network obligations, KVKK privacy, competition probes."
+    },
+    {
+      "id": "saudi_arabia",
+      "name": "Saudi Arabia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPL privacy, content/licensing rules; Vision 2030 digital market."
+    },
+    {
+      "id": "united_arab_emirates",
+      "name": "United Arab Emirates",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPL-style privacy, free-zone overlays, platform content rules."
+    },
+    {
+      "id": "israel",
+      "name": "Israel",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Privacy Protection Law reforms and online harms/competition attention."
+    },
+    {
+      "id": "egypt",
+      "name": "Egypt",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection law and extensive content/telecom rules."
+    },
+    {
+      "id": "morocco",
+      "name": "Morocco",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Law 09-08 privacy and digital economy rules; Meta available."
+    },
+    {
+      "id": "tunisia",
+      "name": "Tunisia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection authority framework; Meta consumer presence."
+    },
+    {
+      "id": "algeria",
+      "name": "Algeria",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; Meta available with content constraints."
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law and cybercrime statute; Meta available."
+    },
+    {
+      "id": "lebanon",
+      "name": "Lebanon",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "E-transactions/privacy fragments; heavy Meta/WA usage."
+    },
+    {
+      "id": "iraq",
+      "name": "Iraq",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta widely used; evolving cyber and media regulation."
+    },
+    {
+      "id": "kuwait",
+      "name": "Kuwait",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection and cybercrime rules; Meta available."
+    },
+    {
+      "id": "qatar",
+      "name": "Qatar",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data privacy law; Meta available."
+    },
+    {
+      "id": "bahrain",
+      "name": "Bahrain",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "PDPL-style privacy; Meta available."
+    },
+    {
+      "id": "oman",
+      "name": "Oman",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection law; Meta available."
+    },
+    {
+      "id": "palestine",
+      "name": "Palestine",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta consumer use; fragmented regulatory authority."
+    },
+    {
+      "id": "libya",
+      "name": "Libya",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta messaging-heavy; limited centralized digital regulation."
+    },
+    {
+      "id": "sudan",
+      "name": "Sudan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta used amid conflict; unstable regulatory environment."
+    },
+    {
+      "id": "yemen",
+      "name": "Yemen",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta used where connectivity allows; fragmented authority."
+    },
+    {
+      "id": "south_africa",
+      "name": "South Africa",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "POPIA privacy, Competition Commission platform work, Film & Publications online rules."
+    },
+    {
+      "id": "nigeria",
+      "name": "Nigeria",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "NDPR privacy, FCCPC digital, major FB/WA market."
+    },
+    {
+      "id": "kenya",
+      "name": "Kenya",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data Protection Act, ODPC enforcement; strong Meta usage."
+    },
+    {
+      "id": "ghana",
+      "name": "Ghana",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data Protection Act; Meta consumer market."
+    },
+    {
+      "id": "ethiopia",
+      "name": "Ethiopia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection proclamation; large population Meta growth."
+    },
+    {
+      "id": "tanzania",
+      "name": "Tanzania",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data protection act and content rules."
+    },
+    {
+      "id": "uganda",
+      "name": "Uganda",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection and privacy act; social media tax/history relevant."
+    },
+    {
+      "id": "rwanda",
+      "name": "Rwanda",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; digital-forward governance."
+    },
+    {
+      "id": "senegal",
+      "name": "Senegal",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection authority; Francophone West Africa Meta market."
+    },
+    {
+      "id": "cote_divoire",
+      "name": "Côte d'Ivoire",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; major Francophone Meta market."
+    },
+    {
+      "id": "cameroon",
+      "name": "Cameroon",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Cybersecurity/cybercrime statutes; Meta available."
+    },
+    {
+      "id": "angola",
+      "name": "Angola",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; Portuguese-speaking market."
+    },
+    {
+      "id": "mozambique",
+      "name": "Mozambique",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection framework; Meta available."
+    },
+    {
+      "id": "zambia",
+      "name": "Zambia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; Meta available."
+    },
+    {
+      "id": "zimbabwe",
+      "name": "Zimbabwe",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Cyber and data statutes; Meta available."
+    },
+    {
+      "id": "botswana",
+      "name": "Botswana",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; Meta available."
+    },
+    {
+      "id": "namibia",
+      "name": "Namibia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; Meta available."
+    },
+    {
+      "id": "mauritius",
+      "name": "Mauritius",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Strong DPA regime; Meta available."
+    },
+    {
+      "id": "madagascar",
+      "name": "Madagascar",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; developing data rules."
+    },
+    {
+      "id": "mali",
+      "name": "Mali",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available amid security constraints."
+    },
+    {
+      "id": "burkina_faso",
+      "name": "Burkina Faso",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; content/security overlays."
+    },
+    {
+      "id": "niger",
+      "name": "Niger",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; Sahel regulatory environment."
+    },
+    {
+      "id": "chad",
+      "name": "Chad",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; limited formal privacy capacity."
+    },
+    {
+      "id": "benin",
+      "name": "Benin",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection authority; Meta available."
+    },
+    {
+      "id": "togo",
+      "name": "Togo",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; Meta available."
+    },
+    {
+      "id": "sierra_leone",
+      "name": "Sierra Leone",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Cybersecurity and data bills; Meta available."
+    },
+    {
+      "id": "liberia",
+      "name": "Liberia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; developing digital law."
+    },
+    {
+      "id": "gambia",
+      "name": "Gambia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection bill track; Meta available."
+    },
+    {
+      "id": "guinea",
+      "name": "Guinea",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; cyber/content rules."
+    },
+    {
+      "id": "congo_drc",
+      "name": "Democratic Republic of the Congo",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Large population Meta market; cyber law fragments."
+    },
+    {
+      "id": "congo_republic",
+      "name": "Republic of the Congo",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; CEMAC-region rules."
+    },
+    {
+      "id": "gabon",
+      "name": "Gabon",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection framework; Meta available."
+    },
+    {
+      "id": "malawi",
+      "name": "Malawi",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Electronic transactions/data rules; Meta available."
+    },
+    {
+      "id": "lesotho",
+      "name": "Lesotho",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; Meta available."
+    },
+    {
+      "id": "eswatini",
+      "name": "Eswatini",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection bill/act track; Meta available."
+    },
+    {
+      "id": "somalia",
+      "name": "Somalia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta heavily used for communications; limited formal regulation."
+    },
+    {
+      "id": "south_sudan",
+      "name": "South Sudan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta used where connected; nascent digital law."
+    },
+    {
+      "id": "cape_verde",
+      "name": "Cabo Verde",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection law; Meta available."
+    },
+    {
+      "id": "sao_tome_and_principe",
+      "name": "São Tomé and Príncipe",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; small Lusophone market."
+    },
+    {
+      "id": "seychelles",
+      "name": "Seychelles",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection act; Meta available."
+    },
+    {
+      "id": "comoros",
+      "name": "Comoros",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; small-island digital rules."
+    },
+    {
+      "id": "djibouti",
+      "name": "Djibouti",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; telecom-centric regulation."
+    },
+    {
+      "id": "mauritania",
+      "name": "Mauritania",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; cyber/content statutes."
+    },
+    {
+      "id": "central_african_republic",
+      "name": "Central African Republic",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available where connected; limited regulatory capacity."
+    },
+    {
+      "id": "equatorial_guinea",
+      "name": "Equatorial Guinea",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; limited transparency."
+    },
+    {
+      "id": "guinea_bissau",
+      "name": "Guinea-Bissau",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; ECOWAS-region norms."
+    },
+    {
+      "id": "burundi",
+      "name": "Burundi",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available; media/cyber rules."
+    },
+    {
+      "id": "kazakhstan",
+      "name": "Kazakhstan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data law and platform content rules; Meta available."
+    },
+    {
+      "id": "uzbekistan",
+      "name": "Uzbekistan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data law; growing Meta presence."
+    },
+    {
+      "id": "kyrgyzstan",
+      "name": "Kyrgyzstan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Personal data law; Meta available."
+    },
+    {
+      "id": "tajikistan",
+      "name": "Tajikistan",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta available with content constraints."
+    },
+    {
+      "id": "russia",
+      "name": "Russia",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Historically huge Meta market; Facebook/IG designated/restricted—research legal status carefully."
+    },
+    {
+      "id": "belarus",
+      "name": "Belarus",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Meta availability constrained; strict speech/data rules."
+    },
+    {
+      "id": "andorra",
+      "name": "Andorra",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Qualified data protection regime; Meta available."
+    },
+    {
+      "id": "monaco",
+      "name": "Monaco",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Data protection aligned with EU principles; Meta available."
+    },
+    {
+      "id": "san_marino",
+      "name": "San Marino",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Small-state data rules; Meta available."
+    },
+    {
+      "id": "faroe_islands",
+      "name": "Faroe Islands",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Self-governing; GDPR-adjacent data rules via Denmark relationship."
+    },
+    {
+      "id": "greenland",
+      "name": "Greenland",
+      "level": "country",
+      "parent_id": null,
+      "domains_priority": [
+        "all"
+      ],
+      "rationale": "Self-governing; data rules via Kingdom of Denmark framework."
+    },
+    {
+      "id": "california",
+      "name": "California",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety",
+        "competition",
+        "ip",
+        "accessibility"
+      ],
+      "rationale": "CPRA/CCPA, Delete Act, AADC, extensive AG enforcement; primary US state for Meta privacy/youth."
+    },
+    {
+      "id": "colorado",
+      "name": "Colorado",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "CPA comprehensive privacy; significant AG rulemaking and enforcement."
+    },
+    {
+      "id": "connecticut",
+      "name": "Connecticut",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "CTDPA comprehensive privacy act."
+    },
+    {
+      "id": "delaware",
+      "name": "Delaware",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "DPDPA comprehensive consumer privacy law."
+    },
+    {
+      "id": "florida",
+      "name": "Florida",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "State digital bill of rights style privacy + social media minor restrictions."
+    },
+    {
+      "id": "indiana",
+      "name": "Indiana",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Indiana Consumer Data Protection Act."
+    },
+    {
+      "id": "iowa",
+      "name": "Iowa",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Iowa Consumer Data Protection Act."
+    },
+    {
+      "id": "kentucky",
+      "name": "Kentucky",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Kentucky Consumer Data Protection Act."
+    },
+    {
+      "id": "maryland",
+      "name": "Maryland",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "MODPA comprehensive privacy + AADC-style youth design obligations."
+    },
+    {
+      "id": "minnesota",
+      "name": "Minnesota",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "MCDPA privacy + age-appropriate design / youth online safety measures."
+    },
+    {
+      "id": "montana",
+      "name": "Montana",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Montana Consumer Data Privacy Act."
+    },
+    {
+      "id": "nebraska",
+      "name": "Nebraska",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "Data privacy act + AADC-aligned youth protections."
+    },
+    {
+      "id": "new_hampshire",
+      "name": "New Hampshire",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "New Hampshire comprehensive privacy statute."
+    },
+    {
+      "id": "new_jersey",
+      "name": "New Jersey",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "NJDPA comprehensive privacy law."
+    },
+    {
+      "id": "oregon",
+      "name": "Oregon",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "OCPA comprehensive privacy act."
+    },
+    {
+      "id": "rhode_island",
+      "name": "Rhode Island",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Rhode Island comprehensive privacy statute."
+    },
+    {
+      "id": "tennessee",
+      "name": "Tennessee",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "TIPA comprehensive privacy law."
+    },
+    {
+      "id": "texas",
+      "name": "Texas",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety",
+        "competition"
+      ],
+      "rationale": "TDPSA privacy and social media minor / age-assurance laws."
+    },
+    {
+      "id": "utah",
+      "name": "Utah",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "UCPA privacy + pioneering social media regulation for minors."
+    },
+    {
+      "id": "virginia",
+      "name": "Virginia",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "VCDPA first-wave comprehensive state privacy law."
+    },
+    {
+      "id": "illinois",
+      "name": "Illinois",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "BIPA biometric privacy landmark; material Meta litigation history."
+    },
+    {
+      "id": "washington",
+      "name": "Washington",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "My Health My Data Act and active privacy/consumer enforcement."
+    },
+    {
+      "id": "nevada",
+      "name": "Nevada",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Online privacy opt-out regime and consumer health data rules."
+    },
+    {
+      "id": "maine",
+      "name": "Maine",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "ISP broadband privacy law leadership."
+    },
+    {
+      "id": "vermont",
+      "name": "Vermont",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "Data broker law + AADC-style youth design obligations."
+    },
+    {
+      "id": "south_carolina",
+      "name": "South Carolina",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "AADC-style age-appropriate design / youth online safety measures."
+    },
+    {
+      "id": "new_york",
+      "name": "New York",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety",
+        "competition"
+      ],
+      "rationale": "Child online safety / privacy legislative activity and major AG enforcement market."
+    },
+    {
+      "id": "louisiana",
+      "name": "Louisiana",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Social media minor / age-gating statutes relevant to platforms."
+    },
+    {
+      "id": "arkansas",
+      "name": "Arkansas",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Social media age-verification / minor account laws."
+    },
+    {
+      "id": "ohio",
+      "name": "Ohio",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "Large market with social-minor and privacy legislative activity."
+    },
+    {
+      "id": "georgia_us",
+      "name": "Georgia (U.S. state)",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "U.S. state of Georgia — consumer privacy/biometric legislative activity; id disambiguates from country Georgia."
+    },
+    {
+      "id": "arizona",
+      "name": "Arizona",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Consumer data and online privacy legislative activity; large Meta user base."
+    },
+    {
+      "id": "michigan",
+      "name": "Michigan",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Large market; privacy and youth online legislative attention."
+    },
+    {
+      "id": "pennsylvania",
+      "name": "Pennsylvania",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy",
+        "youth_safety"
+      ],
+      "rationale": "Large market; child online safety and privacy proposals."
+    },
+    {
+      "id": "north_carolina",
+      "name": "North Carolina",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Large market; consumer privacy legislative track."
+    },
+    {
+      "id": "wisconsin",
+      "name": "Wisconsin",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Consumer privacy legislative activity."
+    },
+    {
+      "id": "missouri",
+      "name": "Missouri",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Social media minor / parental consent legislative activity."
+    },
+    {
+      "id": "mississippi",
+      "name": "Mississippi",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Social media age-gating / minor protection statutes."
+    },
+    {
+      "id": "alabama",
+      "name": "Alabama",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Youth social media restriction legislative activity."
+    },
+    {
+      "id": "oklahoma",
+      "name": "Oklahoma",
+      "level": "us_state",
+      "parent_id": "united_states",
+      "domains_priority": [
+        "youth_safety"
+      ],
+      "rationale": "Social media minor protection legislative activity."
+    },
+    {
+      "id": "new_york_city",
+      "name": "New York City",
+      "level": "us_city",
+      "parent_id": "new_york",
+      "domains_priority": [
+        "privacy",
+        "accessibility"
+      ],
+      "rationale": "Local Law 144 AI hiring bias audits and biometric/privacy local ordinances material to platform ops/advertising vendors."
+    },
+    {
+      "id": "san_francisco",
+      "name": "San Francisco",
+      "level": "us_city",
+      "parent_id": "california",
+      "domains_priority": [
+        "privacy",
+        "accessibility"
+      ],
+      "rationale": "Municipal surveillance/privacy ordinances and accessibility procurement norms in a core Meta HQ metro."
+    },
+    {
+      "id": "seattle",
+      "name": "Seattle",
+      "level": "us_city",
+      "parent_id": "washington",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Municipal privacy principles and significant West Coast platform employment/regulatory attention."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "name": "meta_legal_gold_set",
+  "version": "1.0.0",
+  "built_at": "2026-08-05",
+  "entry_count": 100,
+  "provenance": {
+    "method": "independent_deep_research",
+    "not_derived_from": [
+      "data/dossiers/**",
+      "graph run outputs",
+      "accepted LawRecord dumps"
+    ],
+    "description": "Curated recall gold set of 100 Meta-relevant platform/legal instruments. Compiled independently from public primary sources (EUR-Lex, US Code/Cornell LII, national legislation portals, regulator pages) and well-known statutory corpora. No dossier files under data/dossiers were read or copied.",
+    "selection_principles": [
+      "Exactly 100 entries with unique gold_id",
+      "Mix of low-obscurity anchors (GDPR, DMA, DSA, COPPA, CCPA, DMCA, ADA) and medium/high-obscurity instruments",
+      "Geographic spread: EU, US federal, multiple US states, UK/Ireland, Brazil, India, Australia, Canada, Japan, Korea, Singapore, South Africa",
+      "Domain coverage across privacy, competition, youth_safety, ip, accessibility",
+      "Prefer primary source_url when available; secondary official portals allowed",
+      "aliases capture common short names and alternate citations for matcher robustness"
+    ]
+  },
+  "domains": [
+    "accessibility",
+    "competition",
+    "ip",
+    "privacy",
+    "youth_safety"
+  ],
+  "jurisdiction_ids": [
+    "arkansas",
+    "australia",
+    "brazil",
+    "california",
+    "canada",
+    "colorado",
+    "connecticut",
+    "delaware",
+    "european_union",
+    "florida",
+    "illinois",
+    "india",
+    "ireland",
+    "japan",
+    "montana",
+    "new_york",
+    "oregon",
+    "singapore",
+    "south_africa",
+    "south_korea",
+    "texas",
+    "united_kingdom",
+    "united_states",
+    "utah",
+    "virginia",
+    "washington"
+  ],
+  "obscurity_counts": {
+    "low": 38,
+    "medium": 50,
+    "high": 12
+  },
+  "domain_counts": {
+    "privacy": 37,
+    "competition": 19,
+    "youth_safety": 19,
+    "ip": 13,
+    "accessibility": 12
+  },
+  "matcher_contract": {
+    "found_if_any": [
+      "normalized citation key overlap (boilerplate-tolerant compact alnum)",
+      "source_url host+path significant equality",
+      "normalized title/alias slug hit OR distinctive gold-alias token containment AND same domain_id AND compatible jurisdiction_id (exact or US-state under united_states)"
+    ]
+  },
+  "files": {
+    "gold_set": "evals/meta_legal/gold_set.json",
+    "matcher": "evals/meta_legal/match.py",
+    "cli": "evals/meta_legal/score_recall.py"
+  }
+}
