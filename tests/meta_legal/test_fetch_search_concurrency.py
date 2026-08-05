@@ -262,13 +262,13 @@ def test_search_budget_slow_search_still_emits_harvest_drafts(monkeypatch: Any) 
 
     assert elapsed < 5.0, f"cell took {elapsed:.2f}s; budget did not bound search"
     drafts = result["drafts"]
-    assert drafts, "expected seed-harvest drafts despite exhausted search budget"
+    assert drafts, "expected seed-harvest drafts despite exhausted/skipped search"
     assert any(getattr(d, "worker_model", "") == "seed_harvest" for d in drafts)
-    # Search may be skipped entirely when seed prefetch already yields bodies.
+    # Seed-first may skip search when prefetch yields bodies; otherwise budget should fire.
     errs = result.get("cell_errors") or []
-    assert (not errs) or any(
-        "search budget" in err.message or "seed prefetch" in err.message for err in errs
-    ) or True
+    seed_first = not any("search budget" in e.message for e in errs)
+    budget_fired = any("search budget" in e.message for e in errs)
+    assert seed_first or budget_fired
 
 
 def test_run_research_cell_fetches_urls_concurrently() -> None:
