@@ -125,7 +125,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--max-concurrency",
         type=int,
         default=None,
-        help="Override max_concurrency (default: run_config / env, usually 8)",
+        help="Override max_concurrency (default: run_config / env, usually 12)",
+    )
+    parser.add_argument(
+        "--limit-cells",
+        type=int,
+        default=None,
+        help="Only run the first N explicit cells (mini eval / smoke). Default: all.",
     )
     return parser.parse_args(argv)
 
@@ -151,6 +157,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     explicit_cells = load_explicit_cells_from_gold(gold_path)
+    if args.limit_cells is not None:
+        n = max(0, int(args.limit_cells))
+        explicit_cells = explicit_cells[:n]
     jurisdictions = list(dict.fromkeys(c["jurisdiction"] for c in explicit_cells))
     domains = list(dict.fromkeys(c["domain"] for c in explicit_cells))
     subject = (args.subject or "Meta").strip() or "Meta"
@@ -163,13 +172,14 @@ def main(argv: list[str] | None = None) -> int:
     print("meta_legal eval grid")
     print(f"  gold            = {gold_path}")
     print(f"  explicit_cells  = {len(explicit_cells)}")
+    if args.limit_cells is not None:
+        print(f"  limit_cells     = {int(args.limit_cells)}")
     print(f"  jurisdictions   = {len(jurisdictions)}")
     print(f"  domains         = {domains}")
     print(f"  subject         = {subject!r}")
     print(f"  max_concurrency = {concurrency}")
     if explicit_cells:
         print(f"  sample_cell     = {explicit_cells[0]}")
-
     if args.dry_run:
         print("dry-run: exiting without invoke")
         return 0
