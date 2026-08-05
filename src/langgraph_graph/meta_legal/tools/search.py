@@ -262,12 +262,15 @@ def _firecrawl_cli_available() -> bool:
 
 
 def _firecrawl_search_semaphore() -> threading.Semaphore:
-    """Limit concurrent ``firecrawl search`` subprocesses (default 12)."""
+    """Limit concurrent ``firecrawl search`` subprocesses (default 40).
+
+    Cloud plan allows ~50-job concurrency; leave headroom for scrapes/other use.
+    """
     global _FIRECRAWL_SEARCH_SEM, _FIRECRAWL_SEARCH_SEM_SIZE
     try:
-        size = max(1, int(os.getenv(_FIRECRAWL_SEARCH_MAX_PAR_ENV) or "12"))
+        size = max(1, int(os.getenv(_FIRECRAWL_SEARCH_MAX_PAR_ENV) or "40"))
     except ValueError:
-        size = 12
+        size = 40
     with _FIRECRAWL_SEARCH_SEM_LOCK:
         if _FIRECRAWL_SEARCH_SEM is None or _FIRECRAWL_SEARCH_SEM_SIZE != size:
             _FIRECRAWL_SEARCH_SEM = threading.Semaphore(size)
@@ -533,7 +536,11 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     Provider order:
       1. Tavily when ``TAVILY_API_KEY`` is set
       2. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
-      3. ddgs / duckduckgo_search if importable
+      3. ddgs / duckduckgo_search if importable (only when Firecrawl CLI absent)
+
+    When the Firecrawl CLI is available it is authoritative: empty CLI results
+    do **not** fall through to DDG (avoids multi-engine socket stampedes under
+    full-grid concurrency). DDG remains the offline/dev fallback.
 
     Identical queries are served from an in-process cache within the process.
     A process-wide circuit breaker short-circuits to ``[]`` for a cooldown
@@ -564,11 +571,10 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
                 return out
         if _firecrawl_cli_available():
             hits = _search_firecrawl_cli(q, limit)
-            if hits:
-                out = hits[:limit]
-                _cache_put(q, limit, out)
-                _breaker_record(True)
-                return out
+            out = (hits or [])[:limit]
+            _cache_put(q, limit, out)
+            _breaker_record(bool(out))
+            return out
         out = _search_ddg(q, limit, single_wave=breaker == "half_open")[:limit]
         # Cache empty results too to avoid hammering dead backends for same query.
         _cache_put(q, limit, out)

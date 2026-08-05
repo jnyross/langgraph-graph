@@ -121,3 +121,23 @@ def test_web_search_prefers_firecrawl_over_ddg(monkeypatch: Any) -> None:
     assert ddg_calls == []
     clear_search_cache()
     reset_search_breaker()
+
+
+def test_web_search_firecrawl_empty_skips_ddg(monkeypatch: Any) -> None:
+    """With CLI present, empty Firecrawl results must not stampede DDG."""
+    clear_search_cache()
+    reset_search_breaker()
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", True)
+    monkeypatch.setattr(search_mod, "_search_firecrawl_cli", lambda *_a, **_k: [])
+    ddg_calls: list[str] = []
+
+    def _ddg(*_a: Any, **_k: Any) -> list[dict[str, str]]:
+        ddg_calls.append("called")
+        return [{"title": "ddg", "url": "https://ddg.example", "snippet": "nope"}]
+
+    monkeypatch.setattr(search_mod, "_search_ddg", _ddg)
+    assert web_search("no hits query xyz", max_results=5) == []
+    assert ddg_calls == []
+    clear_search_cache()
+    reset_search_breaker()
