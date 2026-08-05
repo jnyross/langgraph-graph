@@ -31,12 +31,12 @@ class _FakeLLM:
         return _Msg(self.content)
 
 
-def test_default_max_concurrency_is_twelve() -> None:
-    assert DEFAULT_MAX_CONCURRENCY == 12
+def test_default_max_concurrency_is_one_hundred() -> None:
+    assert DEFAULT_MAX_CONCURRENCY == 100
     # When env unset, resolver returns default.
     old = os.environ.pop("META_LEGAL_MAX_CONCURRENCY", None)
     try:
-        assert max_concurrency() == 12
+        assert max_concurrency() == 100
     finally:
         if old is not None:
             os.environ["META_LEGAL_MAX_CONCURRENCY"] = old
@@ -46,9 +46,9 @@ def test_max_concurrency_env_override(monkeypatch: Any) -> None:
     monkeypatch.setenv("META_LEGAL_MAX_CONCURRENCY", "16")
     assert max_concurrency() == 16
     monkeypatch.setenv("META_LEGAL_MAX_CONCURRENCY", "0")
-    assert max_concurrency() == 12
+    assert max_concurrency() == 100
     monkeypatch.setenv("META_LEGAL_MAX_CONCURRENCY", "nope")
-    assert max_concurrency() == 12
+    assert max_concurrency() == 100
 
 
 def test_fetch_url_retries_once_on_failure() -> None:
