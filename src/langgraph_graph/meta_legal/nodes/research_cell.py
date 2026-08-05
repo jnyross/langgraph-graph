@@ -1943,7 +1943,7 @@ def run_research_cell(
             return url, "", f"fetch failed for {url}: {exc}"
         return url, text, None
 
-    # Prefetch top seeds first; if they succeed, skip web search entirely.
+    # Prefetch top seeds first; quality early-exit needs non-empty excerpts.
     seed_prefetch = seed_urls[: min(4, len(seed_urls))]
     fetched_by_url: dict[str, str] = {}
     if seed_prefetch:
@@ -1968,28 +1968,24 @@ def run_research_cell(
                 if (text or "").strip():
                     fetched_by_url[got_url] = text.strip()
         except FuturesTimeout:
-            # Keep whatever arrived; remaining seeds may still fetch later.
             pass
         finally:
             pre_pool.shutdown(wait=False, cancel_futures=True)
 
     seed_bodies = sum(1 for u in seed_prefetch if (fetched_by_url.get(u) or "").strip())
 
-    # Fast path: harvest from seeds/aggregators before any web search.
+    # Fast path: harvest using prefetched bodies only (no further network).
     drafts: list[LawRecordDraft] = []
     try:
-        early_fetch = fetch
-        if seed_bodies >= 2:
 
-            def _cache_only_early(url: str, max_chars: int = 12000) -> str:
-                return fetched_by_url.get(url, "") or ""
+        def _cache_only_early(url: str, max_chars: int = 12000) -> str:
+            return fetched_by_url.get(url, "") or ""
 
-            early_fetch = _cache_only_early
         early = harvest_seed_instruments(
             resolved,
             instruments=_instruments_for_cell(resolved),
             seed_urls=seed_urls,
-            fetch_fn=early_fetch,
+            fetch_fn=_cache_only_early,
             fetched_cache=fetched_by_url,
             max_chars_excerpt=min(1200, max_chars_per_page),
             max_chars_fetch=max_chars_per_page,
@@ -2005,10 +2001,11 @@ def run_research_cell(
             )
         )
 
-    if len(drafts) >= 3:
-        # Coverage already satisfied without search/LLM.
+    # Quality early-exit: need enough drafts AND non-empty excerpts (real page text).
+    rich = [d for d in drafts if (getattr(d, "excerpt", None) or "").strip()]
+    if len(rich) >= 3:
         return {
-            "drafts": drafts,
+            "drafts": rich,
             **({"cell_errors": errors} if errors else {}),
         }
 
@@ -2182,8 +2179,7 @@ def run_research_cell(
         )
     context = "\n\n".join(context_parts)
 
-    # --- deterministic harvest first (often sufficient; avoids LLM latency) ---
-    drafts: list[LawRecordDraft] = []
+    # --- deterministic harvest (seeds, else any successfully fetched pages) ---
     try:
         harvest_fetch = fetch
         seed_bodies_n = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
@@ -2193,10 +2189,20 @@ def run_research_cell(
                 return fetched_by_url.get(url, "") or ""
 
             harvest_fetch = _cache_only
+        harvest_seeds = list(seed_urls)
+        if not harvest_seeds:
+            harvest_seeds = [u for u, t in fetched_by_url.items() if (t or "").strip()][:8]
+        # Drop hollow early aggregator drafts when we now have real page bodies.
+        if harvest_seeds and any((fetched_by_url.get(u) or "").strip() for u in harvest_seeds):
+            drafts = [
+                d
+                for d in drafts
+                if (getattr(d, "excerpt", None) or "").strip()
+            ]
         harvested = harvest_seed_instruments(
             resolved,
             instruments=_instruments_for_cell(resolved),
-            seed_urls=seed_urls,
+            seed_urls=harvest_seeds if harvest_seeds else seed_urls,
             fetch_fn=harvest_fetch,
             fetched_cache=fetched_by_url,
             max_chars_excerpt=min(1200, max_chars_per_page),
@@ -2213,8 +2219,9 @@ def run_research_cell(
             )
         )
 
-    # Skip LLM when harvest already produced enough drafts (coverage preserved).
-    need_llm = len(drafts) < 3
+    # Skip LLM only when harvest produced enough drafts with real page text.
+    rich_n = sum(1 for d in drafts if (getattr(d, "excerpt", None) or "").strip())
+    need_llm = rich_n < 3
     active_llm = llm
     if need_llm and active_llm is None:
         try:

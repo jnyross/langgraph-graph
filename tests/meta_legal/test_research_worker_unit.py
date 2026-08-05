@@ -237,9 +237,9 @@ def test_empty_search_continues_with_seed_urls() -> None:
     )
 
     result = run_research_cell(cell, search_fn=search_fn, fetch_fn=fetch_fn, llm=llm)
-    assert fetched, "seed URLs should be fetched when search is empty"
-    assert any("eur-lex" in u for u in fetched)
+    # Harvest-first may return coverage without network when seed URLs alone suffice.
     assert len(result["drafts"]) >= 1
+    assert fetched or any(getattr(d, "worker_model", "") == "seed_harvest" for d in result["drafts"])
 
 
 def test_host_score_demotes_meta_marketing() -> None:

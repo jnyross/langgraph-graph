@@ -47,30 +47,42 @@ def main() -> int:
     def one(cell):
         t0 = time.perf_counter()
         out = run_research_cell(cell)
-        return time.perf_counter() - t0, len(out.get("drafts") or [])
+        drafts = out.get("drafts") or []
+        rich = sum(1 for d in drafts if (getattr(d, "excerpt", None) or "").strip())
+        return time.perf_counter() - t0, len(drafts), rich
 
     t0 = time.perf_counter()
     times: list[float] = []
     drafts: list[int] = []
+    rich_counts: list[int] = []
     with ThreadPoolExecutor(max_workers=len(cells)) as pool:
         futs = [pool.submit(one, c) for c in cells]
         for fut in as_completed(futs):
-            dt, n = fut.result()
+            dt, n, r = fut.result()
             times.append(dt)
             drafts.append(n)
+            rich_counts.append(r)
     wall = time.perf_counter() - t0
     min_d = min(drafts) if drafts else 0
     total_d = sum(drafts)
     max_c = max(times) if times else 0.0
+    min_rich = min(rich_counts) if rich_counts else 0
+    total_rich = sum(rich_counts)
 
     print(f"METRIC wall_s={wall:.4f}")
     print(f"METRIC min_drafts={min_d}")
     print(f"METRIC total_drafts={total_d}")
+    print(f"METRIC min_rich_drafts={min_rich}")
+    print(f"METRIC total_rich_drafts={total_rich}")
     print(f"METRIC max_cell_s={max_c:.4f}")
     print(f"METRIC cells={len(cells)}")
 
     if min_d < 1:
         print("QUALITY_FAIL min_drafts < 1", file=sys.stderr)
+        return 2
+    # Quality: every cell must keep at least one draft with real page excerpt.
+    if min_rich < 1:
+        print("QUALITY_FAIL min_rich_drafts < 1 (empty excerpts)", file=sys.stderr)
         return 2
     return 0
 
