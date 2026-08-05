@@ -125,3 +125,63 @@ def list_jurisdiction_names(
         if isinstance(name, str) and name.strip():
             names.append(name.strip())
     return names
+
+
+def catalog_jurisdiction_count(
+    catalog: Mapping[str, Any] | None = None,
+    levels: Sequence[str] | Iterable[str] | None = None,
+) -> int:
+    """Number of catalog jurisdictions (optionally filtered by level)."""
+    return len(list_jurisdiction_names(catalog=catalog, levels=levels))
+
+
+def catalog_product_pairs(
+    domains: Sequence[str] | None = None,
+    *,
+    catalog: Mapping[str, Any] | None = None,
+    levels: Sequence[str] | Iterable[str] | None = None,
+    path: str | Path | None = None,
+) -> list[dict[str, str]]:
+    """Full cartesian product: catalog jurisdictions × domains.
+
+    Returns ``[{"jurisdiction": name, "domain": domain_id}, ...]`` in catalog
+    order × domain order. Domain strings are passed through as given (callers
+    typically use starter domain slugs). Empty jurisdiction names are skipped.
+    """
+    doc = catalog if catalog is not None else load_catalog(path)
+    names = list_jurisdiction_names(doc, levels=levels)
+    if domains is None:
+        from langgraph_graph.meta_legal.run_config import DEFAULT_STARTER_DOMAINS
+
+        domain_list = list(DEFAULT_STARTER_DOMAINS)
+    else:
+        domain_list = [str(d).strip() for d in domains if str(d).strip()]
+
+    pairs: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for name in names:
+        for domain in domain_list:
+            key = (name.casefold(), domain.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            pairs.append({"jurisdiction": name, "domain": domain})
+    return pairs
+
+
+def catalog_product_size(
+    domains: Sequence[str] | None = None,
+    *,
+    catalog: Mapping[str, Any] | None = None,
+    levels: Sequence[str] | Iterable[str] | None = None,
+    path: str | Path | None = None,
+) -> int:
+    """``|J| × |D|`` for the catalog product (after empty-name filtering)."""
+    return len(
+        catalog_product_pairs(
+            domains,
+            catalog=catalog,
+            levels=levels,
+            path=path,
+        )
+    )

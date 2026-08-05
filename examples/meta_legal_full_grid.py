@@ -26,6 +26,7 @@ from pathlib import Path
 from langgraph_graph.meta_legal import STARTER_DOMAINS, build_graph
 from langgraph_graph.meta_legal.jurisdictions import (
     VALID_LEVELS,
+    catalog_product_size,
     list_jurisdiction_names,
     load_catalog,
 )
@@ -143,12 +144,23 @@ def main(argv: list[str] | None = None) -> int:
 
     cells = expand_cells(jurisdictions, domains, subject=subject)
     cell_count = len(cells)
+    expected = catalog_product_size(
+        domains,
+        catalog=load_catalog(args.catalog) if args.catalog else load_catalog(),
+        levels=_parse_levels(args.levels),
+    )
+    # When no jurisdiction limit, planned cells must match full product size.
+    if args.limit_jurisdictions is None and cell_count != expected:
+        raise SystemExit(
+            f"catalog product mismatch: expand_cells={cell_count} expected={expected}"
+        )
 
     print("meta_legal full grid")
     print(f"  jurisdictions = {len(jurisdictions)}")
     print(f"  domains       = {domains}")
     print(f"  subject       = {subject!r}")
     print(f"  cell_count    = {cell_count}")
+    print(f"  catalog_product = {expected}")
     if args.limit_jurisdictions is not None:
         print(f"  limit_jurisdictions = {args.limit_jurisdictions}")
     if args.levels:
@@ -241,4 +253,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    code = main()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+    os._exit(code)

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Callable, Iterable, Mapping, Sequence
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote_plus, unquote, urlparse
 
 from langgraph_graph.meta_legal.models import LawRecordDraft, ResearchCell, normalize_domain, slugify
 
@@ -84,13 +84,49 @@ def _citation_from_name(name: str) -> str:
     text = (name or "").strip()
     if not text:
         return ""
-    for pat in _CITATION_RES:
-        m = pat.search(text)
-        if m:
-            return " ".join(m.group(0).split())
-    # First ~12 tokens as a soft citation stand-in.
+    for pattern in _CITATION_RES:
+        match = pattern.search(text)
+        if match:
+            return match.group(0)
     tokens = text.split()
     return " ".join(tokens[:12])
+
+
+def _official_aggregator_seeds(cell: ResearchCell, instruments: Sequence[str]) -> list[str]:
+    """Build real multi-jurisdiction legal-database URLs for seedless cells.
+
+    Uses WIPO Lex / FAO FAOLEX-style entry points keyed by jurisdiction name
+    and instrument keywords — not fabricated citation pages.
+    """
+    jname = (cell.jurisdiction or cell.jurisdiction_id or "").strip()
+    domain = (cell.domain_id or cell.domain or "").strip()
+    urls: list[str] = []
+    if jname:
+        q_j = quote_plus(jname)
+        # WIPO Lex country legislation search
+        urls.append(f"https://www.wipo.int/wipolex/en/search/results?q={q_j}")
+        # FAOLEX (legislation) search
+        urls.append(f"https://www.fao.org/faolex/results/en/?search=y&query={q_j}")
+        # UNCTAD competition law info (domain-relevant but safe for all)
+        if domain in {"competition", "privacy", "youth_safety", "ip", "accessibility"}:
+            urls.append(
+                "https://unctad.org/topic/competition-and-consumer-protection/legislation"
+            )
+    for name in list(instruments)[:3]:
+        title = _display_title(name)
+        if not title or not jname:
+            continue
+        q = quote_plus(f"{title} {jname}")
+        urls.append(f"https://www.wipo.int/wipolex/en/search/results?q={q}")
+    # de-dupe preserve order
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in urls:
+        if u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+    return out[:8]
 
 
 def _display_title(name: str) -> str:
@@ -288,6 +324,10 @@ def harvest_seed_instruments(
     except Exception:
         return []
 
+    if not seeds and inst:
+        # Honest coverage floor: official multi-jurisdiction legal databases
+        # (not fabricated citations). Secondary source_type; real host pages.
+        seeds = _official_aggregator_seeds(resolved, inst)
     if not seeds:
         return []
 

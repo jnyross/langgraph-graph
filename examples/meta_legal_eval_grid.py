@@ -1,13 +1,15 @@
-"""Run meta_legal on gold_set jurisdiction×domain cells and score recall.
+"""Run meta_legal eval grid and score gold recall.
 
-Loads gold_set.json only to derive unique (jurisdiction, domain) pairs — never
-passes gold titles into the graph. Invokes once with ``explicit_cells`` so the
-planner expands exactly those pairs (not a full cartesian product).
+Cell sources:
+  - gold (default): unique jurisdiction×domain pairs from gold_set.json
+  - catalog: full cartesian product from meta_operating_catalog.json × domains
+
+Never passes gold titles into the graph. Invokes once with ``explicit_cells``.
 
 Usage:
-  uv run python examples/meta_legal_eval_grid.py
   uv run python examples/meta_legal_eval_grid.py --dry-run
-  uv run python examples/meta_legal_eval_grid.py --gold evals/meta_legal/gold_set.json
+  uv run python examples/meta_legal_eval_grid.py --source catalog --dry-run
+  uv run python examples/meta_legal_eval_grid.py --source catalog --limit-cells 20
 """
 
 from __future__ import annotations
@@ -22,7 +24,8 @@ from pathlib import Path
 from typing import Any
 
 from langgraph_graph.meta_legal import build_graph
-from langgraph_graph.meta_legal.run_config import max_concurrency
+from langgraph_graph.meta_legal.jurisdictions import catalog_product_pairs, catalog_product_size
+from langgraph_graph.meta_legal.run_config import DEFAULT_STARTER_DOMAINS, max_concurrency
 
 try:
     from dotenv import load_dotenv
@@ -77,13 +80,39 @@ def load_explicit_cells_from_gold(gold_path: Path) -> list[dict[str, str]]:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Eval-grid meta_legal run from gold_set cells + recall score."
+        description="Eval-grid meta_legal run (gold pairs or full catalog product) + recall score."
+    )
+    parser.add_argument(
+        "--source",
+        choices=("gold", "catalog"),
+        default="gold",
+        help="Cell source: gold_set pairs (default) or full catalog×domains product",
     )
     parser.add_argument(
         "--gold",
         type=Path,
         default=DEFAULT_GOLD,
-        help=f"Path to gold_set.json (default: {DEFAULT_GOLD})",
+        help=f"Path to gold_set.json for scoring and --source gold (default: {DEFAULT_GOLD})",
+    )
+    parser.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Optional catalog JSON path when --source catalog (default: bundled)",
+    )
+    parser.add_argument(
+        "--domains",
+        nargs="+",
+        default=None,
+        help=(
+            "Domains for --source catalog "
+            f"(default: {' '.join(DEFAULT_STARTER_DOMAINS)})"
+        ),
+    )
+    parser.add_argument(
+        "--levels",
+        default=None,
+        help="Comma-separated catalog levels for --source catalog (default: all)",
     )
     parser.add_argument(
         "--subject",
@@ -136,6 +165,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _parse_levels(raw: str | None) -> list[str] | None:
+    if raw is None or not str(raw).strip():
+        return None
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    return list(dict.fromkeys(parts)) or None
+
+
+def load_explicit_cells(args: argparse.Namespace) -> list[dict[str, str]]:
+    """Resolve explicit cells from --source gold|catalog."""
+    if args.source == "catalog":
+        domains = list(args.domains) if args.domains else list(DEFAULT_STARTER_DOMAINS)
+        levels = _parse_levels(args.levels)
+        path = args.catalog
+        return catalog_product_pairs(domains, levels=levels, path=path)
+    return load_explicit_cells_from_gold(args.gold)
+
+
 def _append_log(log_path: Path, row: dict[str, Any]) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as fh:
@@ -156,11 +202,33 @@ def _score_dossier(gold_path: Path, dossier_path: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     gold_path: Path = args.gold
-    if not gold_path.is_file():
+    if args.source == "gold" and not gold_path.is_file():
         print(f"error: gold set not found: {gold_path}", file=sys.stderr)
         return 2
+    if args.source == "catalog" or not args.skip_score:
+        # Scoring always needs gold when not skipped.
+        if not args.skip_score and not gold_path.is_file():
+            print(f"error: gold set not found for scoring: {gold_path}", file=sys.stderr)
+            return 2
 
-    explicit_cells = load_explicit_cells_from_gold(gold_path)
+    expected_product: int | None = None
+    if args.source == "catalog":
+        domains = list(args.domains) if args.domains else list(DEFAULT_STARTER_DOMAINS)
+        levels = _parse_levels(args.levels)
+        expected_product = catalog_product_size(
+            domains, levels=levels, path=args.catalog
+        )
+
+    explicit_cells = load_explicit_cells(args)
+    if args.source == "catalog" and expected_product is not None:
+        if len(explicit_cells) != expected_product:
+            print(
+                f"error: catalog product size mismatch: got {len(explicit_cells)} "
+                f"expected {expected_product}",
+                file=sys.stderr,
+            )
+            return 2
+
     if args.limit_cells is not None:
         limit = max(0, int(args.limit_cells))
         explicit_cells = explicit_cells[:limit]
@@ -174,7 +242,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print("meta_legal eval grid")
+    print(f"  source          = {args.source}")
     print(f"  gold            = {gold_path}")
+    if args.source == "catalog":
+        print(f"  catalog_product = {expected_product}")
+        if args.levels:
+            print(f"  levels          = {args.levels}")
     print(f"  explicit_cells  = {len(explicit_cells)}")
     if args.limit_cells is not None:
         print(f"  limit_cells     = {int(args.limit_cells)}")

@@ -79,6 +79,44 @@ def test_list_jurisdiction_names_all_and_filtered() -> None:
     assert "United States" not in multi
 
 
+def test_catalog_product_pairs_full_starter_domains() -> None:
+    from langgraph_graph.meta_legal.jurisdictions import (
+        catalog_product_pairs,
+        catalog_product_size,
+        list_jurisdiction_names,
+    )
+    from langgraph_graph.meta_legal.nodes.plan_cells import expand_cells
+    from langgraph_graph.meta_legal.run_config import DEFAULT_STARTER_DOMAINS
+
+    names = list_jurisdiction_names()
+    domains = list(DEFAULT_STARTER_DOMAINS)
+    expected = len(names) * len(domains)
+    assert expected >= 80 * 5
+    assert catalog_product_size(domains) == expected
+
+    pairs = catalog_product_pairs(domains)
+    assert len(pairs) == expected
+    assert pairs[0]["jurisdiction"] == names[0]
+    assert pairs[0]["domain"] == domains[0]
+    # last pair is last jurisdiction × last domain
+    assert pairs[-1]["jurisdiction"] == names[-1]
+    assert pairs[-1]["domain"] == domains[-1]
+
+    cells = expand_cells(names, domains)
+    assert len(cells) == expected
+
+
+def test_eval_grid_catalog_source_dry_run_count() -> None:
+    from examples.meta_legal_eval_grid import _parse_args, load_explicit_cells
+    from langgraph_graph.meta_legal.jurisdictions import catalog_product_size
+    from langgraph_graph.meta_legal.run_config import DEFAULT_STARTER_DOMAINS
+
+    args = _parse_args(["--source", "catalog", "--dry-run"])
+    cells = load_explicit_cells(args)
+    assert len(cells) == catalog_product_size(list(DEFAULT_STARTER_DOMAINS))
+    assert len(cells) == 1110 or len(cells) >= 400  # catalog may grow; floor sanity
+
+
 def test_load_catalog_missing_file(tmp_path: Path) -> None:
     missing = tmp_path / "nope.json"
     with pytest.raises(FileNotFoundError):

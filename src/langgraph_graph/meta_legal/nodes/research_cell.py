@@ -1236,17 +1236,94 @@ def _coerce_cell(payload: Mapping[str, Any] | ResearchCell | Any) -> ResearchCel
     )
 
 
+def _is_eu_member_jurisdiction(jid: str) -> bool:
+    """EU-27 member state slugs present in the Meta operating catalog."""
+    return jid in {
+        "austria",
+        "belgium",
+        "bulgaria",
+        "croatia",
+        "cyprus",
+        "czech_republic",
+        "denmark",
+        "estonia",
+        "finland",
+        "france",
+        "germany",
+        "greece",
+        "hungary",
+        "ireland",
+        "italy",
+        "latvia",
+        "lithuania",
+        "luxembourg",
+        "malta",
+        "netherlands",
+        "poland",
+        "portugal",
+        "romania",
+        "slovakia",
+        "slovenia",
+        "spain",
+        "sweden",
+    }
+
+
+def _seed_lookup_keys(jid: str, domain_id: str) -> list[tuple[str, str]]:
+    """Ordered (jurisdiction_id, domain_id) keys for seed/instrument inheritance."""
+    keys: list[tuple[str, str]] = [(jid, domain_id)]
+    if jid in {"eu", "european-union"}:
+        keys.append(("european_union", domain_id))
+    if jid in {"us", "usa", "united-states-of-america"}:
+        keys.append(("united_states", domain_id))
+    # EU members, EEA/EFTA peers, and Council of Europe inherit EU primaries.
+    if (
+        _is_eu_member_jurisdiction(jid)
+        or jid
+        in {
+            "council_of_europe",
+            "norway",
+            "iceland",
+            "liechtenstein",
+            "switzerland",
+        }
+    ):
+        keys.append(("european_union", domain_id))
+    return list(dict.fromkeys(keys))
+
+
+def _us_state_or_city_ids() -> frozenset[str]:
+    """Lazy catalog lookup of us_state / us_city ids (empty if catalog unavailable)."""
+    try:
+        from langgraph_graph.meta_legal.jurisdictions import load_catalog
+
+        cat = load_catalog()
+        return frozenset(
+            str(j.get("id") or "")
+            for j in (cat.get("jurisdictions") or [])
+            if isinstance(j, dict) and j.get("level") in {"us_state", "us_city"} and j.get("id")
+        )
+    except Exception:
+        return frozenset()
+
+
 def _instruments_for_cell(cell: ResearchCell) -> tuple[str, ...]:
     jid = (cell.jurisdiction_id or slugify(normalize_jurisdiction(cell.jurisdiction or ""))).strip()
     domain_id = cell.domain_id or normalize_domain(cell.domain or "")
-    specific = _JURISDICTION_DOMAIN_INSTRUMENTS.get((jid, domain_id))
-    if specific:
-        return specific
+    for key_jid, key_dom in _seed_lookup_keys(jid, domain_id):
+        specific = _JURISDICTION_DOMAIN_INSTRUMENTS.get((key_jid, key_dom))
+        if specific:
+            return specific
+    # US state/city → federal instruments when no state-specific map entry.
+    if jid in _us_state_or_city_ids():
+        fed = _JURISDICTION_DOMAIN_INSTRUMENTS.get(("united_states", domain_id))
+        if fed:
+            return fed
     generic = _DOMAIN_INSTRUMENTS.get(domain_id)
     if generic:
         return generic
     label = (cell.domain or domain_id or "regulation").strip()
-    return (label,)
+    return (f"{label} regulation statute official text",)
 
 
 def build_search_queries(cell: ResearchCell) -> list[str]:
@@ -1314,16 +1391,21 @@ def build_search_queries(cell: ResearchCell) -> list[str]:
 
 
 def seed_urls_for_cell(cell: ResearchCell) -> list[str]:
-    """Return high-confidence primary-source URLs for the cell, if known."""
+    """Return high-confidence primary-source URLs for the cell, if known.
+
+    Falls back along inheritance keys: exact cell → EU members/CoE → european_union,
+    US states/cities → united_states.
+    """
     jid = (cell.jurisdiction_id or "").strip() or slugify(
         normalize_jurisdiction(cell.jurisdiction or "")
     )
     domain_id = (cell.domain_id or normalize_domain(cell.domain or "")).strip()
-    seeds = list(_SEED_URLS.get((jid, domain_id), ()))
-    # Soft jurisdiction aliases
-    if not seeds and jid in {"eu", "european-union"}:
-        seeds = list(_SEED_URLS.get(("european_union", domain_id), ()))
-    if not seeds and jid in {"us", "usa", "united-states-of-america"}:
+    seeds: list[str] = []
+    for key_jid, key_dom in _seed_lookup_keys(jid, domain_id):
+        seeds = list(_SEED_URLS.get((key_jid, key_dom), ()))
+        if seeds:
+            break
+    if not seeds and jid in _us_state_or_city_ids():
         seeds = list(_SEED_URLS.get(("united_states", domain_id), ()))
     out: list[str] = []
     seen: set[str] = set()
@@ -1912,16 +1994,8 @@ def run_research_cell(
                 "snippet": "Curated primary-source seed for this jurisdiction/domain cell.",
             }
         )
-
-    if not search_hits:
-        errors.append(
-            CellError(
-                cell_id=cell_id,
-                message="search returned no results",
-                stage="research",
-            )
-        )
-        return {"drafts": [], "cell_errors": errors}
+    search_empty = not search_hits
+    # Continue even when search_empty: seed harvest / aggregator floor can still emit drafts.
 
     urls = select_urls(search_hits, limit=max_urls)
     if not urls:
@@ -2058,7 +2132,7 @@ def run_research_cell(
             )
             drafts = []
 
-    if not drafts and not any("search returned no results" in e.message for e in errors):
+    if not drafts and not search_empty:
         # Soft warning when model produced nothing usable (harvest may still fill).
         errors.append(
             CellError(
@@ -2087,6 +2161,16 @@ def run_research_cell(
             CellError(
                 cell_id=cell_id,
                 message=f"seed harvest failed: {exc}",
+                stage="research",
+            )
+        )
+
+    # Hard empty-search signal only if we still have nothing to accept.
+    if search_empty and not drafts:
+        errors.append(
+            CellError(
+                cell_id=cell_id,
+                message="search returned no results",
                 stage="research",
             )
         )

@@ -321,8 +321,8 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
         max_fetch_workers=5,
     )
     assert result["drafts"]
-    # All five URLs should have been requested (order-independent).
-    assert lock_state["i"] == 5
+    # At least the five search URLs should have been requested (harvest may add more).
+    assert lock_state["i"] >= 5
 
 
 def test_eval_grid_limit_cells_and_max_concurrency_flags() -> None:

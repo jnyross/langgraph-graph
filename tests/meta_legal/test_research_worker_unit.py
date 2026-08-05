@@ -154,8 +154,8 @@ def test_research_cell_accepts_flat_send_payload_dict() -> None:
     assert out["drafts"][0].domain_id == "competition"
 
 
-def test_empty_search_returns_no_crash_empty_drafts() -> None:
-    # Jurisdiction/domain with no curated seeds so empty search still short-circuits.
+def test_empty_search_still_harvests_aggregator_floor() -> None:
+    # Seedless jurisdiction: empty search no longer short-circuits; harvest floor emits drafts.
     cell = _sample_cell(
         cell_id="atlantis::ip",
         jurisdiction="Atlantis",
@@ -168,11 +168,11 @@ def test_empty_search_returns_no_crash_empty_drafts() -> None:
         return []
 
     def fetch_fn(url: str, max_chars: int = 12000) -> str:
-        raise AssertionError("fetch should not be called when search is empty")
+        return ""
 
     class _BoomLLM:
         def invoke(self, *_a: Any, **_k: Any) -> Any:
-            raise AssertionError("llm should not be called when search is empty")
+            raise AssertionError("llm should not be required when harvest floor works")
 
     result = run_research_cell(
         cell,
@@ -181,11 +181,11 @@ def test_empty_search_returns_no_crash_empty_drafts() -> None:
         llm=_BoomLLM(),
     )
 
-    assert result["drafts"] == []
-    assert "cell_errors" in result
-    assert len(result["cell_errors"]) >= 1
-    assert all(isinstance(err, CellError) for err in result["cell_errors"])
-    assert any("search" in err.message.lower() for err in result["cell_errors"])
+    assert len(result["drafts"]) >= 1
+    assert all(d.source_url.startswith("http") for d in result["drafts"])
+    assert any("wipo.int" in d.source_url or "fao.org" in d.source_url for d in result["drafts"])
+    # Soft warnings ok; hard "search returned no results" only when drafts empty.
+    assert not any(err.message == "search returned no results" for err in result.get("cell_errors", []))
 
 
 def test_build_search_queries_eu_privacy_instrument_first() -> None:
@@ -356,7 +356,7 @@ def test_research_cell_never_raises_on_total_tool_failure(monkeypatch: Any) -> N
         fetch_fn=fetch_fn,
         llm=_BadLLM(),
     )
-    assert out["drafts"] == []
+    assert len(out["drafts"]) >= 1  # harvest floor still produces drafts
     assert out.get("cell_errors")
 
     # Node entry must also soft-fail. Patch tools so the test stays offline.
