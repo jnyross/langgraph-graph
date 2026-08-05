@@ -13,6 +13,9 @@ DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # OpenRouter rolling alias for current DeepSeek V4 Flash (see /api/v1/models).
 # Currently resolves to deepseek/deepseek-v4-flash-0731.
 DEFAULT_MODEL = "~deepseek/deepseek-v4-flash-latest"
+# Bound hung TLS reads so a stuck cell cannot pin the whole grid.
+DEFAULT_REQUEST_TIMEOUT_S = 60.0
+DEFAULT_MAX_RETRIES = 1
 
 
 def get_llm(model: str | None = None, **kwargs: Any):
@@ -23,6 +26,8 @@ def get_llm(model: str | None = None, **kwargs: Any):
         api_key: OPENROUTER_API_KEY, falling back to OPENAI_API_KEY
         base_url: OPENROUTER_BASE_URL or ``https://openrouter.ai/api/v1``
         temperature: 0
+        request_timeout: META_LEGAL_LLM_TIMEOUT_S or 60s
+        max_retries: META_LEGAL_LLM_MAX_RETRIES or 1
     """
     from langchain_openai import ChatOpenAI
 
@@ -44,6 +49,21 @@ def get_llm(model: str | None = None, **kwargs: Any):
         or DEFAULT_OPENROUTER_BASE_URL
     )
     temperature = kwargs.pop("temperature", 0)
+
+    if "request_timeout" not in kwargs:
+        try:
+            kwargs["request_timeout"] = float(
+                os.getenv("META_LEGAL_LLM_TIMEOUT_S") or DEFAULT_REQUEST_TIMEOUT_S
+            )
+        except ValueError:
+            kwargs["request_timeout"] = DEFAULT_REQUEST_TIMEOUT_S
+    if "max_retries" not in kwargs:
+        try:
+            kwargs["max_retries"] = int(
+                os.getenv("META_LEGAL_LLM_MAX_RETRIES") or DEFAULT_MAX_RETRIES
+            )
+        except ValueError:
+            kwargs["max_retries"] = DEFAULT_MAX_RETRIES
 
     init_kwargs: dict[str, Any] = {
         "model": resolved_model,
