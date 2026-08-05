@@ -1,0 +1,9 @@
+commit	subject	elapsed	recall	found	accepted	cov	rich	empty	no_res
+d8ef8f0	perf: universal search budget and seed/search overlap (~3x)	127.584	0.99	99	248	63/63	178	70	0
+313ba42	Seed-first: prefetch seeds then skip search if >=2 bodies; queries=3 budget=4s	113.246	1.0	100	254	63/63	173	81	0
+30fd4bf	Harvest before LLM; skip LLM when harvest already has >=3 drafts	113.287	0.99	99	237	63/63	143	94	0
+6f0b019	Early exit only with >=3 rich (non-empty excerpt) drafts; seedless harvest from fetched pages; min_rich gate in bench	112.885	0.88	88	217	63/63	172	45	0
+659e73b	DEFAULT_MAX_QUERIES=2 SEARCH_BUDGET=3s with rich-excerpt quality gate	113.615	0.88	88	213	63/63	164	49	0
+5dd7b8f	Skip web search whenever cell has curated seed URLs; rich-excerpt gate holds	104.231	0.88	88	214	63/63	162	52	0
+eb14b91	Rescue harvest if no rich drafts; seedless early-harvest disabled; stable min_rich=3	113.592	0.85	85	182	63/63	165	17	0
+d6290f4	Prefetch 3 seeds; max_chars 5k; max_urls 5; max_results 2; min_rich=2	113.265	0.77	77	168	63/63	152	16	0
