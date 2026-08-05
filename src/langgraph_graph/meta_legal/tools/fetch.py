@@ -7,7 +7,6 @@ Thread-safe for concurrent fetches within a cell worker.
 from __future__ import annotations
 
 import contextlib
-import os
 import re
 import threading
 import time
@@ -145,14 +144,10 @@ def _fetch_once(client: Any, target: str, limit: int) -> str:
 
 def _host_spacing_seconds() -> float:
     """Optional min gap between fetches to the same host (env ms → seconds)."""
-    raw = (os.getenv("META_LEGAL_FETCH_HOST_SPACING_MS") or "").strip()
-    if not raw:
-        return 0.0
-    try:
-        ms = float(raw)
-    except ValueError:
-        return 0.0
-    return max(0.0, ms / 1000.0)
+    from langgraph_graph.meta_legal._env import env_float
+
+    ms = env_float("META_LEGAL_FETCH_HOST_SPACING_MS", 0.0, minimum=0.0)
+    return ms / 1000.0 if ms else 0.0
 
 
 def _wait_host_spacing(url: str) -> None:
@@ -177,23 +172,23 @@ def _wait_host_spacing(url: str) -> None:
 
 
 def _firecrawl_api_url() -> str:
-    return (os.getenv(FIRECRAWL_API_URL_ENV) or "http://localhost:3002").rstrip("/")
+    from langgraph_graph.meta_legal._env import env_str
+
+    return env_str(FIRECRAWL_API_URL_ENV, "http://localhost:3002").rstrip("/")
 
 
 def _fetch_backend() -> str:
-    raw = (os.getenv(FETCH_BACKEND_ENV) or "auto").strip().lower()
-    if raw in {"auto", "firecrawl", "httpx"}:
-        return raw
-    return "auto"
+    from langgraph_graph.meta_legal._env import env_choice
+
+    return env_choice(FETCH_BACKEND_ENV, "auto", {"auto", "firecrawl", "httpx"})
 
 
 def _firecrawl_semaphore() -> threading.Semaphore:
     """Module-level semaphore sized by META_LEGAL_FIRECRAWL_MAX_PAR (default 20)."""
     global _FIRECRAWL_SEM, _FIRECRAWL_SEM_SIZE
-    try:
-        size = max(1, int(os.getenv(FIRECRAWL_MAX_PAR_ENV) or "20"))
-    except ValueError:
-        size = 20
+    from langgraph_graph.meta_legal._env import env_int
+
+    size = env_int(FIRECRAWL_MAX_PAR_ENV, 20, minimum=1)
     with _FIRECRAWL_SEM_LOCK:
         if _FIRECRAWL_SEM is None or size != _FIRECRAWL_SEM_SIZE:
             _FIRECRAWL_SEM = threading.Semaphore(size)

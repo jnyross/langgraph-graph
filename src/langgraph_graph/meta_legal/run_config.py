@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -27,14 +26,11 @@ def max_concurrency(default: int = DEFAULT_MAX_CONCURRENCY) -> int:
     Reads ``META_LEGAL_MAX_CONCURRENCY``. Invalid / non-positive values fall back
     to *default* (itself clamped to at least 1).
     """
+    from langgraph_graph.meta_legal._env import env_int
+
     fallback = max(1, int(default))
-    raw = os.getenv(_ENV_MAX_CONCURRENCY)
-    if raw is None or not str(raw).strip():
-        return fallback
-    try:
-        value = int(str(raw).strip())
-    except ValueError:
-        return fallback
+    # Preserve original semantics: non-positive env falls back to *fallback*, not to 1.
+    value = env_int(_ENV_MAX_CONCURRENCY, fallback, minimum=-10_000)
     return value if value >= 1 else fallback
 
 

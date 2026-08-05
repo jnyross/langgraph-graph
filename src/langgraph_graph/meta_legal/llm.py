@@ -48,19 +48,17 @@ def get_llm(model: str | None = None, **kwargs: Any):
     temperature = kwargs.pop("temperature", 0)
 
     if "request_timeout" not in kwargs:
-        try:
-            kwargs["request_timeout"] = float(
-                os.getenv("META_LEGAL_LLM_TIMEOUT_S") or DEFAULT_REQUEST_TIMEOUT_S
-            )
-        except ValueError:
-            kwargs["request_timeout"] = DEFAULT_REQUEST_TIMEOUT_S
+        from langgraph_graph.meta_legal._env import env_float
+
+        kwargs["request_timeout"] = env_float(
+            "META_LEGAL_LLM_TIMEOUT_S", DEFAULT_REQUEST_TIMEOUT_S, minimum=5.0
+        )
     if "max_retries" not in kwargs:
-        try:
-            kwargs["max_retries"] = int(
-                os.getenv("META_LEGAL_LLM_MAX_RETRIES") or DEFAULT_MAX_RETRIES
-            )
-        except ValueError:
-            kwargs["max_retries"] = DEFAULT_MAX_RETRIES
+        from langgraph_graph.meta_legal._env import env_int
+
+        kwargs["max_retries"] = env_int(
+            "META_LEGAL_LLM_MAX_RETRIES", DEFAULT_MAX_RETRIES, minimum=0, maximum=5
+        )
 
     init_kwargs: dict[str, Any] = {
         "model": resolved_model,

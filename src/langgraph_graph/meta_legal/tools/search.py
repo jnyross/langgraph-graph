@@ -19,16 +19,9 @@ from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-
-class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
-    """ThreadPoolExecutor whose workers are daemons (safe process exit on hang)."""
-
-    def _adjust_thread_count(self) -> None:  # type: ignore[override]
-        super()._adjust_thread_count()
-        for t in list(getattr(self, "_threads", ())):
-            with contextlib.suppress(Exception):
-                t.daemon = True
-
+from langgraph_graph.meta_legal.tools._pool import (
+    DaemonThreadPoolExecutor as _DaemonThreadPoolExecutor,
+)
 
 # Preferred multi-engine backends for the modern ``ddgs`` package.
 _DDGS_BACKENDS: tuple[str, ...] = (
@@ -158,22 +151,17 @@ def clear_search_cache() -> None:
 
 
 def _breaker_n() -> int:
-    try:
-        return max(1, int(os.getenv("META_LEGAL_SEARCH_BREAKER_N", "") or _BREAKER_DEFAULT_N))
-    except ValueError:
-        return _BREAKER_DEFAULT_N
+    from langgraph_graph.meta_legal._env import env_int
+
+    return env_int("META_LEGAL_SEARCH_BREAKER_N", _BREAKER_DEFAULT_N, minimum=1)
 
 
 def _breaker_cooldown_s() -> float:
-    try:
-        return max(
-            0.0,
-            float(
-                os.getenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "") or _BREAKER_DEFAULT_COOLDOWN_S
-            ),
-        )
-    except ValueError:
-        return _BREAKER_DEFAULT_COOLDOWN_S
+    from langgraph_graph.meta_legal._env import env_float
+
+    return env_float(
+        "META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", _BREAKER_DEFAULT_COOLDOWN_S, minimum=0.0
+    )
 
 
 def _breaker_state() -> str:
@@ -266,10 +254,9 @@ def _firecrawl_search_semaphore() -> threading.Semaphore:
     Cloud plan allows ~50-job concurrency; leave headroom for scrapes/other use.
     """
     global _FIRECRAWL_SEARCH_SEM, _FIRECRAWL_SEARCH_SEM_SIZE
-    try:
-        size = max(1, int(os.getenv(_FIRECRAWL_SEARCH_MAX_PAR_ENV) or "40"))
-    except ValueError:
-        size = 40
+    from langgraph_graph.meta_legal._env import env_int
+
+    size = env_int(_FIRECRAWL_SEARCH_MAX_PAR_ENV, 40, minimum=1)
     with _FIRECRAWL_SEARCH_SEM_LOCK:
         if _FIRECRAWL_SEARCH_SEM is None or size != _FIRECRAWL_SEARCH_SEM_SIZE:
             _FIRECRAWL_SEARCH_SEM = threading.Semaphore(size)

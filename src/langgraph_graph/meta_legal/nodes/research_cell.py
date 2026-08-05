@@ -10,8 +10,8 @@ import os
 import re
 import time
 from collections.abc import Callable, Iterable, Mapping
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
+from concurrent.futures import as_completed
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,21 +31,11 @@ from langgraph_graph.meta_legal.nodes.seed_harvest import (
     harvest_seed_instruments,
     merge_drafts,
 )
+from langgraph_graph.meta_legal.tools._pool import (
+    DaemonThreadPoolExecutor as _DaemonThreadPoolExecutor,
+)
 from langgraph_graph.meta_legal.tools.fetch import fetch_url as default_fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search as default_web_search
-
-
-class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
-    """Fetch pool with daemon workers so hung GETs cannot pin process exit."""
-
-    def _adjust_thread_count(self) -> None:  # type: ignore[override]
-        super()._adjust_thread_count()
-        import contextlib
-
-        for t in list(getattr(self, "_threads", ())):
-            with contextlib.suppress(Exception):
-                t.daemon = True
-
 
 SearchFn = Callable[[str, int], list[dict[str, str]]]
 FetchFn = Callable[[str, int], str]
@@ -57,19 +47,15 @@ _SEARCH_QUERY_WORKERS = 6
 
 
 def _max_queries() -> int:
-    try:
-        return max(1, int(os.getenv("META_LEGAL_MAX_QUERIES", "") or DEFAULT_MAX_QUERIES))
-    except ValueError:
-        return DEFAULT_MAX_QUERIES
+    from langgraph_graph.meta_legal._env import env_int
+
+    return env_int("META_LEGAL_MAX_QUERIES", DEFAULT_MAX_QUERIES, minimum=1)
 
 
 def _search_budget_s() -> float:
-    try:
-        return max(
-            0.1, float(os.getenv("META_LEGAL_SEARCH_BUDGET_S", "") or DEFAULT_SEARCH_BUDGET_S)
-        )
-    except ValueError:
-        return DEFAULT_SEARCH_BUDGET_S
+    from langgraph_graph.meta_legal._env import env_float
+
+    return env_float("META_LEGAL_SEARCH_BUDGET_S", DEFAULT_SEARCH_BUDGET_S, minimum=0.1)
 
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "research.md"
@@ -1663,10 +1649,9 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
 
 
 def _llm_timeout_s() -> float:
-    try:
-        return max(5.0, float(os.getenv("META_LEGAL_LLM_TIMEOUT_S", "") or 60.0))
-    except ValueError:
-        return 60.0
+    from langgraph_graph.meta_legal._env import env_float
+
+    return env_float("META_LEGAL_LLM_TIMEOUT_S", 60.0, minimum=5.0)
 
 
 def _call_llm(

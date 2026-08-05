@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import quote_plus, unquote, urlparse
 
+from langgraph_graph.meta_legal._env import env_int
 from langgraph_graph.meta_legal.models import (
     LawRecordDraft,
     ResearchCell,
@@ -345,10 +346,7 @@ def harvest_seed_instruments(
         return []
 
     # Cap drafts per cell — enough for coverage, avoids stampeding fetches.
-    try:
-        max_pairs = max(3, int(__import__("os").getenv("META_LEGAL_HARVEST_MAX_PAIRS", "") or "8"))
-    except ValueError:
-        max_pairs = 8
+    max_pairs = env_int("META_LEGAL_HARVEST_MAX_PAIRS", 8, minimum=3)
     pairs = pairs[:max_pairs]
 
     jid = (resolved.jurisdiction_id or slugify(resolved.jurisdiction or "")).strip()
