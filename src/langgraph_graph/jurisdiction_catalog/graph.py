@@ -56,6 +56,7 @@ def _assemble_graph() -> StateGraph:
 
 
 def build_graph(checkpointer: Any = None):
+    """Compile the graph for scripts, defaulting to an in-memory checkpointer."""
     if checkpointer is None:
         checkpointer = MemorySaver()
     elif checkpointer is False:

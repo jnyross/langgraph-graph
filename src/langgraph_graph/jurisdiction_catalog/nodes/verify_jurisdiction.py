@@ -6,8 +6,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from langgraph_graph.meta_legal.llm import get_llm
 from langgraph_graph.meta_legal.tools.fetch import fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search
@@ -16,16 +14,6 @@ from ..models import Assessment, Candidate, Evidence, Verdict, Verification
 from ..state import CatalogState
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts/verify.md"
-
-
-class _Assessment(BaseModel):
-    """LLM-facing structured verification response."""
-
-    services_available: bool
-    authority_exists: bool
-    verdict: str
-    confidence: float = Field(ge=0.0, le=1.0)
-    rationale: str
 
 
 def _prompt(candidate: Candidate, evidence: list[Evidence]) -> str:
@@ -85,27 +73,21 @@ def verify_jurisdiction(state: CatalogState) -> dict[str, Any]:
         }
     try:
         llm = get_llm()
-        structured = llm.with_structured_output(_Assessment)
+        structured = llm.with_structured_output(Assessment)
         response = structured.invoke(
             [
                 {"role": "system", "content": _prompt(candidate, evidence)},
                 {"role": "user", "content": "Assess this jurisdiction from the supplied evidence."},
             ]
         )
-        assessment = (
-            response
-            if isinstance(response, Assessment)
-            else Assessment.model_validate(
-                response.model_dump() if hasattr(response, "model_dump") else response
-            )
-        )
+        assessment = response
         verdict: Verdict
         if assessment.services_available and assessment.authority_exists:
             verdict = "include" if assessment.verdict == "include" else "uncertain"
-        elif not assessment.services_available or not assessment.authority_exists:
+        elif not assessment.services_available:
             verdict = "exclude"
         else:
-            verdict = "uncertain"
+            verdict = "exclude"
     except Exception as exc:
         errors.append(f"llm verification failed: {exc}")
         assessment = None

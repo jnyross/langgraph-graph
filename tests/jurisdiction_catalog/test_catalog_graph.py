@@ -5,7 +5,12 @@ import json
 import pytest
 
 from langgraph_graph.jurisdiction_catalog import build_graph
-from langgraph_graph.jurisdiction_catalog.models import Candidate, Evidence, Verification
+from langgraph_graph.jurisdiction_catalog.models import (
+    Assessment,
+    Candidate,
+    Evidence,
+    Verification,
+)
 from langgraph_graph.jurisdiction_catalog.nodes.diff_catalog import compute_diff
 from langgraph_graph.jurisdiction_catalog.nodes.plan_candidates import plan_candidates
 from langgraph_graph.jurisdiction_catalog.nodes.validate_candidate import validate_candidate
@@ -121,7 +126,7 @@ def test_verification_uses_both_conditions(
 
     class Structured:
         def invoke(self, messages):
-            return assessment
+            return Assessment(**assessment)
 
     class LLM:
         def with_structured_output(self, schema):
@@ -193,6 +198,45 @@ def test_promotion_sanity_gate(tmp_path, monkeypatch) -> None:
     )
     assert json.loads(live.read_text(encoding="utf-8")) == current
     assert "sanity floor" in (tmp_path / "promotion" / "report.md").read_text()
+
+
+def test_promotion_catalog_read_failure_is_recorded_and_temp_removed(tmp_path, monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("langgraph_graph.jurisdiction_catalog.nodes.write_catalog")
+    live = tmp_path / "live.json"
+    live.write_text("not-json", encoding="utf-8")
+    calls = 0
+
+    def failing_loader(path=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return {
+                "version": "1",
+                "subject": "Meta",
+                "jurisdictions": [{"id": "x", "name": "X", "level": "country"}],
+            }
+        raise ValueError("invalid promoted catalog")
+
+    monkeypatch.setattr(module, "default_catalog_path", lambda: live)
+    monkeypatch.setattr(module, "load_catalog", failing_loader)
+    output = tmp_path / "failed"
+    module.write_catalog(
+        {
+            "run_id": "failed",
+            "write_target": str(tmp_path),
+            "promote": True,
+            "validated": [{"id": "x", "name": "X", "level": "country"}],
+            "rejected": [],
+            "candidates": [],
+            "diff": {},
+        }
+    )
+    report = (output / "report.md").read_text(encoding="utf-8")
+    assert "promotion validation/write failed" in report
+    assert not (output / ".promotion_catalog.json").exists()
+    assert live.read_text(encoding="utf-8") == "not-json"
 
 
 def test_graph_topology_and_compile() -> None:

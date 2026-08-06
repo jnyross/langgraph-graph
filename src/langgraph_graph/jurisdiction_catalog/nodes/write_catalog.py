@@ -57,15 +57,30 @@ def write_catalog(state: CatalogState) -> dict[str, Any]:
     validation_failures = [
         item for item in rejected if item.get("reason") not in {"uncertain", "exclude"}
     ]
-    current_count = len(load_catalog().get("jurisdictions", []))
-    floor = int(current_count * 0.8)
     promotion_reasons: list[str] = []
     if not state.get("promote"):
         promotion_reasons.append("promotion not requested")
     if validation_failures:
         promotion_reasons.append("validation-rule failures are present")
-    if len(entries) < floor:
+    try:
+        current_count = len(load_catalog().get("jurisdictions", []))
+    except Exception as exc:
+        current_count = 0
+        promotion_reasons.append(f"current catalog unavailable: {exc}")
+    floor = int(current_count * 0.8)
+    if current_count and len(entries) < floor:
         promotion_reasons.append(f"accepted count {len(entries)} is below sanity floor {floor}")
+    serialized = json.dumps(catalog, indent=2, ensure_ascii=False) + "\n"
+    if not promotion_reasons:
+        check_path = out / ".promotion_catalog.json"
+        try:
+            check_path.write_text(serialized, encoding="utf-8")
+            load_catalog(check_path)
+            default_catalog_path().write_text(serialized, encoding="utf-8")
+        except Exception as exc:
+            promotion_reasons.append(f"promotion validation/write failed: {exc}")
+        finally:
+            check_path.unlink(missing_ok=True)
     report = "# Jurisdiction catalog research run\n\n"
     report += f"- Run: `{run_id}`\n"
     report += f"- Candidates accepted: {len(entries)}\n"
@@ -87,11 +102,4 @@ def write_catalog(state: CatalogState) -> dict[str, Any]:
             "promotion_refused": bool(promotion_reasons),
         },
     )
-    if not promotion_reasons:
-        serialized = json.dumps(catalog, indent=2, ensure_ascii=False) + "\n"
-        check_path = out / ".promotion_catalog.json"
-        check_path.write_text(serialized, encoding="utf-8")
-        load_catalog(check_path)
-        default_catalog_path().write_text(serialized, encoding="utf-8")
-        check_path.unlink()
     return {"output_path": str(out)}
