@@ -4,7 +4,8 @@
   "graphs": {
     "agent": "./src/langgraph_graph/graph.py:graph",
     "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph",
-    "jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph"
+    "jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph",
+    "news_radar": "./src/langgraph_graph/news_radar/graph.py:graph"
   },
   "env": ".env",
   "python_version": "3.12"
