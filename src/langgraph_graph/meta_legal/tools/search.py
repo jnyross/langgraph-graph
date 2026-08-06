@@ -239,6 +239,69 @@ def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
     return _dedupe_results(results)
 
 
+def _firecrawl_api_url() -> str:
+    """Return Firecrawl base URL; cloud is default when an API key is present."""
+    from langgraph_graph.meta_legal._env import env_str
+
+    if os.getenv("FIRECRAWL_API_KEY") and os.getenv("FIRECRAWL_API_URL") is None:
+        return "https://api.firecrawl.dev"
+    return env_str("FIRECRAWL_API_URL", "http://localhost:3002").rstrip("/")
+
+
+def _search_firecrawl_api(query: str, max_results: int) -> list[dict[str, str]]:
+    """Search via Firecrawl v2 cloud/self-hosted API. Never raises."""
+    api_key = os.getenv("FIRECRAWL_API_KEY")
+    if not api_key:
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    limit = max(1, int(max_results or 5))
+    try:
+        import httpx
+    except Exception:
+        return []
+
+    try:
+        # Request search results without full-page scraping. Firecrawl returns
+        # title/url/description quickly; deep scraping is handled by fetch_url.
+        response = httpx.post(
+            f"{_firecrawl_api_url()}/v2/search",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"query": q, "limit": limit},
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return []
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if isinstance(data, dict):
+        web = data.get("web") or []
+    elif isinstance(data, list):
+        web = data
+    else:
+        web = []
+
+    results: list[dict[str, str]] = []
+    for item in web or []:
+        if not isinstance(item, dict):
+            continue
+        normalized = _normalize_result(
+            {
+                "title": item.get("title"),
+                "url": item.get("url"),
+                "snippet": item.get("markdown") or item.get("content") or item.get("description"),
+            }
+        )
+        if normalized:
+            results.append(normalized)
+        if len(results) >= limit:
+            break
+    return _dedupe_results(results)
+
+
 def _firecrawl_cli_available() -> bool:
     """Cache whether the ``firecrawl`` binary is on PATH."""
     global _FIRECRAWL_CLI
@@ -509,17 +572,34 @@ def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> l
     return []
 
 
+def _search_backend() -> str:
+    """Return configured search backend (auto/tavily/firecrawl/firecrawl_cli/ddg)."""
+    from langgraph_graph.meta_legal._env import env_choice
+
+    return env_choice(
+        "META_LEGAL_SEARCH_BACKEND",
+        "auto",
+        {"auto", "tavily", "firecrawl", "firecrawl_cli", "ddg"},
+    )
+
+
 def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     """Search the web and return ``[{title, url, snippet}, ...]``.
 
-    Provider order:
+    Provider order in ``auto`` mode:
       1. Tavily when ``TAVILY_API_KEY`` is set
       2. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
-      3. ddgs / duckduckgo_search if importable (only when Firecrawl CLI absent)
+      3. ddgs / duckduckgo_search as the offline/dev fallback
 
-    When the Firecrawl CLI is available it is authoritative: empty CLI results
-    do **not** fall through to DDG (avoids multi-engine socket stampedes under
-    full-grid concurrency). DDG remains the offline/dev fallback.
+    Set ``META_LEGAL_SEARCH_BACKEND`` to ``tavily``, ``firecrawl``,
+    ``firecrawl_cli``, or ``ddg`` to force a single backend for benchmarking.
+    ``firecrawl`` uses the Firecrawl v2 API (cloud or self-hosted) first and
+    falls back to the CLI if the API returns nothing.
+
+    Firecrawl is treated as authoritative when configured: empty Firecrawl API
+    results do **not** fall through to later backends. This avoids multi-engine
+    socket stampedes under full-grid concurrency while still allowing Tavily to
+    serve as a fast first probe. DDG remains the offline/dev fallback.
 
     Identical queries are served from an in-process cache within the process.
     A process-wide circuit breaker short-circuits to ``[]`` for a cooldown
@@ -540,24 +620,37 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     if breaker == "open":
         return []
 
-    try:
-        if os.getenv("TAVILY_API_KEY"):
-            hits = _search_tavily(q, limit)
-            if hits:
-                out = hits[:limit]
-                _cache_put(q, limit, out)
-                _breaker_record(True)
-                return out
-        if _firecrawl_cli_available():
-            hits = _search_firecrawl_cli(q, limit)
-            out = (hits or [])[:limit]
+    def _wrap_result(probe: Any) -> list[dict[str, str]]:
+        try:
+            out = (probe(q, limit) or [])[:limit]
             _cache_put(q, limit, out)
             _breaker_record(bool(out))
             return out
-        out = _search_ddg(q, limit, single_wave=breaker == "half_open")[:limit]
-        # Cache empty results too to avoid hammering dead backends for same query.
-        _cache_put(q, limit, out)
-        _breaker_record(bool(out))
-        return out
+        except Exception:
+            return []
+
+    backend = _search_backend()
+    try:
+        if backend == "tavily" and os.getenv("TAVILY_API_KEY"):
+            return _wrap_result(_search_tavily)
+        if backend == "firecrawl" and os.getenv("FIRECRAWL_API_KEY"):
+            out = _wrap_result(_search_firecrawl_api)
+            if out or not _firecrawl_cli_available():
+                return out
+            return _wrap_result(_search_firecrawl_cli)
+        if backend == "firecrawl_cli" and _firecrawl_cli_available():
+            return _wrap_result(_search_firecrawl_cli)
+        if backend == "ddg":
+            return _wrap_result(_search_ddg)
+
+        # auto
+        if os.getenv("TAVILY_API_KEY"):
+            return _wrap_result(_search_tavily)
+        if _firecrawl_cli_available():
+            # CLI is authoritative: empty results do not stampede DDG.
+            return _wrap_result(_search_firecrawl_cli)
+        return _wrap_result(
+            lambda query, n: _search_ddg(query, n, single_wave=breaker == "half_open")[:n]
+        )
     except Exception:
         return []

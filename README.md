@@ -66,6 +66,18 @@ Scripts and examples use `build_graph()` (with an in-memory checkpointer). Studi
 
 Second Studio graph for multi-jurisdiction Meta legal research. Graph id: **`meta_legal`** (`langgraph.json` → `graphs.meta_legal`).
 
+Third Studio graph for evidence-backed jurisdiction catalog research. Graph id:
+**`jurisdiction_catalog`**. It plans from the committed deterministic seed,
+verifies candidates, and writes reports under `data/jurisdictions/runs/`.
+Optional `discover_extra` is off by default and uses a bounded search/model
+request when enabled; parse or provider failures are recorded in the run
+report rather than retried indefinitely.
+When enabled (the default), successful discovery runs auto-widen the research
+seed with newly discovered candidates. This only expands future research:
+every candidate still requires verification and deterministic validation.
+The live `meta_operating_catalog.json` is a separate tier and never changes
+unless promotion is explicitly requested and passes its existing sanity gates.
+
 This graph is **no-HITL** — it does not call `interrupt()`. Runs write dossiers under `data/dossiers/<run_id>/`.
 
 Models go through **OpenRouter** (`langchain-openai` / `ChatOpenAI`). Set `OPENROUTER_API_KEY` in `.env`. Default model is the rolling alias `~deepseek/deepseek-v4-flash-latest` (currently routes to `deepseek/deepseek-v4-flash-0731`); override with `OPENROUTER_MODEL`. Optional `TAVILY_API_KEY` if you switch search off DuckDuckGo. `DOSSIER_ROOT` defaults to `data/dossiers`.

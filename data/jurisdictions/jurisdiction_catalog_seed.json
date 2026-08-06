@@ -1,0 +1,2108 @@
+{
+  "version": "2",
+  "source": "ISO 3166-1 from iso-codes plus curated ISO 3166-2-style subnational sets and current US cities",
+  "candidates": [
+    {
+      "id": "afghanistan",
+      "name": "Afghanistan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "african_union",
+      "name": "African Union",
+      "level": "supranational",
+      "parent_id": null
+    },
+    {
+      "id": "alabama_united_states",
+      "name": "Alabama",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "alaska_united_states",
+      "name": "Alaska",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "albania",
+      "name": "Albania",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "alberta_canada",
+      "name": "Alberta",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "algeria",
+      "name": "Algeria",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "american_samoa",
+      "name": "American Samoa",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "american_samoa_united_states",
+      "name": "American Samoa",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "andorra",
+      "name": "Andorra",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "angola",
+      "name": "Angola",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "anguilla",
+      "name": "Anguilla",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "antarctica",
+      "name": "Antarctica",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "antigua_and_barbuda",
+      "name": "Antigua and Barbuda",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "argentina",
+      "name": "Argentina",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "arizona_united_states",
+      "name": "Arizona",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "arkansas_united_states",
+      "name": "Arkansas",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "armenia",
+      "name": "Armenia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "aruba",
+      "name": "Aruba",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "australia",
+      "name": "Australia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "australian_capital_territory_australia",
+      "name": "Australian Capital Territory",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "austria",
+      "name": "Austria",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "azerbaijan",
+      "name": "Azerbaijan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "baden_württemberg_germany",
+      "name": "Baden-Württemberg",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "bahamas",
+      "name": "Bahamas",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bahrain",
+      "name": "Bahrain",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bangladesh",
+      "name": "Bangladesh",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "barbados",
+      "name": "Barbados",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bavaria_germany",
+      "name": "Bavaria",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "belarus",
+      "name": "Belarus",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "belgium",
+      "name": "Belgium",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "belize",
+      "name": "Belize",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "benin",
+      "name": "Benin",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "berlin_germany",
+      "name": "Berlin",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "bermuda",
+      "name": "Bermuda",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bhutan",
+      "name": "Bhutan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bolivia_plurinational_state_of",
+      "name": "Bolivia, Plurinational State of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bonaire_sint_eustatius_and_saba",
+      "name": "Bonaire, Sint Eustatius and Saba",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bosnia_and_herzegovina",
+      "name": "Bosnia and Herzegovina",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "botswana",
+      "name": "Botswana",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bouvet_island",
+      "name": "Bouvet Island",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "brandenburg_germany",
+      "name": "Brandenburg",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "brazil",
+      "name": "Brazil",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bremen_germany",
+      "name": "Bremen",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "british_columbia_canada",
+      "name": "British Columbia",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "british_indian_ocean_territory",
+      "name": "British Indian Ocean Territory",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "brunei_darussalam",
+      "name": "Brunei Darussalam",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "bulgaria",
+      "name": "Bulgaria",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "burkina_faso",
+      "name": "Burkina Faso",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "burundi",
+      "name": "Burundi",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cabo_verde",
+      "name": "Cabo Verde",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "california_united_states",
+      "name": "California",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "cambodia",
+      "name": "Cambodia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cameroon",
+      "name": "Cameroon",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "canada",
+      "name": "Canada",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cayman_islands",
+      "name": "Cayman Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "central_african_republic",
+      "name": "Central African Republic",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "chad",
+      "name": "Chad",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "chile",
+      "name": "Chile",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "china",
+      "name": "China",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "christmas_island",
+      "name": "Christmas Island",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cocos_keeling_islands",
+      "name": "Cocos (Keeling) Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "colombia",
+      "name": "Colombia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "colorado_united_states",
+      "name": "Colorado",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "comoros",
+      "name": "Comoros",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "congo",
+      "name": "Congo",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "congo_the_democratic_republic_of_the",
+      "name": "Congo, The Democratic Republic of the",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "connecticut_united_states",
+      "name": "Connecticut",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "cook_islands",
+      "name": "Cook Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "costa_rica",
+      "name": "Costa Rica",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "council_of_europe",
+      "name": "Council of Europe",
+      "level": "supranational",
+      "parent_id": null
+    },
+    {
+      "id": "croatia",
+      "name": "Croatia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cuba",
+      "name": "Cuba",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "curaçao",
+      "name": "Curaçao",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "cyprus",
+      "name": "Cyprus",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "czechia",
+      "name": "Czechia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "côte_divoire",
+      "name": "Côte d'Ivoire",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "delaware_united_states",
+      "name": "Delaware",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "denmark",
+      "name": "Denmark",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "district_of_columbia_united_states",
+      "name": "District of Columbia",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "djibouti",
+      "name": "Djibouti",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "dominica",
+      "name": "Dominica",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "dominican_republic",
+      "name": "Dominican Republic",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ecuador",
+      "name": "Ecuador",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "egypt",
+      "name": "Egypt",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "el_salvador",
+      "name": "El Salvador",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "equatorial_guinea",
+      "name": "Equatorial Guinea",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "eritrea",
+      "name": "Eritrea",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "estonia",
+      "name": "Estonia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "eswatini",
+      "name": "Eswatini",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ethiopia",
+      "name": "Ethiopia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "european_union",
+      "name": "European Union",
+      "level": "supranational",
+      "parent_id": null
+    },
+    {
+      "id": "falkland_islands_malvinas",
+      "name": "Falkland Islands (Malvinas)",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "faroe_islands",
+      "name": "Faroe Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "fiji",
+      "name": "Fiji",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "finland",
+      "name": "Finland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "florida_united_states",
+      "name": "Florida",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "french_guiana",
+      "name": "French Guiana",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "french_polynesia",
+      "name": "French Polynesia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "french_southern_territories",
+      "name": "French Southern Territories",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "gabon",
+      "name": "Gabon",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "gambia",
+      "name": "Gambia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "georgia",
+      "name": "Georgia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "georgia_united_states",
+      "name": "Georgia",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "germany",
+      "name": "Germany",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ghana",
+      "name": "Ghana",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "gibraltar",
+      "name": "Gibraltar",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "greece",
+      "name": "Greece",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "greenland",
+      "name": "Greenland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "grenada",
+      "name": "Grenada",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guadeloupe",
+      "name": "Guadeloupe",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guam",
+      "name": "Guam",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guam_united_states",
+      "name": "Guam",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "guatemala",
+      "name": "Guatemala",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guernsey",
+      "name": "Guernsey",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guinea",
+      "name": "Guinea",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guinea_bissau",
+      "name": "Guinea-Bissau",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "guyana",
+      "name": "Guyana",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "haiti",
+      "name": "Haiti",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "hamburg_germany",
+      "name": "Hamburg",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "hawaii_united_states",
+      "name": "Hawaii",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "heard_island_and_mcdonald_islands",
+      "name": "Heard Island and McDonald Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "hesse_germany",
+      "name": "Hesse",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "holy_see_vatican_city_state",
+      "name": "Holy See (Vatican City State)",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "honduras",
+      "name": "Honduras",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "hong_kong",
+      "name": "Hong Kong",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "hungary",
+      "name": "Hungary",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "iceland",
+      "name": "Iceland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "idaho_united_states",
+      "name": "Idaho",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "illinois_united_states",
+      "name": "Illinois",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "india",
+      "name": "India",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "indiana_united_states",
+      "name": "Indiana",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "indonesia",
+      "name": "Indonesia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "iowa_united_states",
+      "name": "Iowa",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "iran_islamic_republic_of",
+      "name": "Iran, Islamic Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "iraq",
+      "name": "Iraq",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ireland",
+      "name": "Ireland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "isle_of_man",
+      "name": "Isle of Man",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "israel",
+      "name": "Israel",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "jamaica",
+      "name": "Jamaica",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "japan",
+      "name": "Japan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "jersey",
+      "name": "Jersey",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "kansas_united_states",
+      "name": "Kansas",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "kazakhstan",
+      "name": "Kazakhstan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "kentucky_united_states",
+      "name": "Kentucky",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "kenya",
+      "name": "Kenya",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "kiribati",
+      "name": "Kiribati",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "korea_democratic_peoples_republic_of",
+      "name": "Korea, Democratic People's Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "korea_republic_of",
+      "name": "Korea, Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "kuwait",
+      "name": "Kuwait",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "kyrgyzstan",
+      "name": "Kyrgyzstan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "lao_peoples_democratic_republic",
+      "name": "Lao People's Democratic Republic",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "latvia",
+      "name": "Latvia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "lebanon",
+      "name": "Lebanon",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "lesotho",
+      "name": "Lesotho",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "liberia",
+      "name": "Liberia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "libya",
+      "name": "Libya",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "liechtenstein",
+      "name": "Liechtenstein",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "lithuania",
+      "name": "Lithuania",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "louisiana_united_states",
+      "name": "Louisiana",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "lower_saxony_germany",
+      "name": "Lower Saxony",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "luxembourg",
+      "name": "Luxembourg",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "macao",
+      "name": "Macao",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "madagascar",
+      "name": "Madagascar",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "maine_united_states",
+      "name": "Maine",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "malawi",
+      "name": "Malawi",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "malaysia",
+      "name": "Malaysia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "maldives",
+      "name": "Maldives",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mali",
+      "name": "Mali",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "malta",
+      "name": "Malta",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "manitoba_canada",
+      "name": "Manitoba",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "marshall_islands",
+      "name": "Marshall Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "martinique",
+      "name": "Martinique",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "maryland_united_states",
+      "name": "Maryland",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "massachusetts_united_states",
+      "name": "Massachusetts",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "mauritania",
+      "name": "Mauritania",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mauritius",
+      "name": "Mauritius",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mayotte",
+      "name": "Mayotte",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mecklenburg_western_pomerania_germany",
+      "name": "Mecklenburg-Western Pomerania",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "mexico",
+      "name": "Mexico",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "michigan_united_states",
+      "name": "Michigan",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "micronesia_federated_states_of",
+      "name": "Micronesia, Federated States of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "minnesota_united_states",
+      "name": "Minnesota",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "mississippi_united_states",
+      "name": "Mississippi",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "missouri_united_states",
+      "name": "Missouri",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "moldova_republic_of",
+      "name": "Moldova, Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "monaco",
+      "name": "Monaco",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mongolia",
+      "name": "Mongolia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "montana_united_states",
+      "name": "Montana",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "montenegro",
+      "name": "Montenegro",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "montserrat",
+      "name": "Montserrat",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "morocco",
+      "name": "Morocco",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "mozambique",
+      "name": "Mozambique",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "myanmar",
+      "name": "Myanmar",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "namibia",
+      "name": "Namibia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "nauru",
+      "name": "Nauru",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "nebraska_united_states",
+      "name": "Nebraska",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "nepal",
+      "name": "Nepal",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "netherlands",
+      "name": "Netherlands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "nevada_united_states",
+      "name": "Nevada",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "new_brunswick_canada",
+      "name": "New Brunswick",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "new_caledonia",
+      "name": "New Caledonia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "new_hampshire_united_states",
+      "name": "New Hampshire",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "new_jersey_united_states",
+      "name": "New Jersey",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "new_mexico_united_states",
+      "name": "New Mexico",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "new_south_wales_australia",
+      "name": "New South Wales",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "new_york_city",
+      "name": "New York City",
+      "level": "us_city",
+      "parent_id": "new_york",
+      "domains_priority": [
+        "privacy",
+        "accessibility"
+      ],
+      "rationale": "Local Law 144 AI hiring bias audits and biometric/privacy local ordinances material to platform ops/advertising vendors."
+    },
+    {
+      "id": "new_york_united_states",
+      "name": "New York",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "new_zealand",
+      "name": "New Zealand",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "newfoundland_and_labrador_canada",
+      "name": "Newfoundland and Labrador",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "nicaragua",
+      "name": "Nicaragua",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "niger",
+      "name": "Niger",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "nigeria",
+      "name": "Nigeria",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "niue",
+      "name": "Niue",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "norfolk_island",
+      "name": "Norfolk Island",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "north_carolina_united_states",
+      "name": "North Carolina",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "north_dakota_united_states",
+      "name": "North Dakota",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "north_macedonia",
+      "name": "North Macedonia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "north_rhine_westphalia_germany",
+      "name": "North Rhine-Westphalia",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "northern_mariana_islands",
+      "name": "Northern Mariana Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "northern_mariana_islands_united_states",
+      "name": "Northern Mariana Islands",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "northern_territory_australia",
+      "name": "Northern Territory",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "northwest_territories_canada",
+      "name": "Northwest Territories",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "norway",
+      "name": "Norway",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "nova_scotia_canada",
+      "name": "Nova Scotia",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "nunavut_canada",
+      "name": "Nunavut",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "ohio_united_states",
+      "name": "Ohio",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "oklahoma_united_states",
+      "name": "Oklahoma",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "oman",
+      "name": "Oman",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ontario_canada",
+      "name": "Ontario",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "oregon_united_states",
+      "name": "Oregon",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "pakistan",
+      "name": "Pakistan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "palau",
+      "name": "Palau",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "palestine_state_of",
+      "name": "Palestine, State of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "panama",
+      "name": "Panama",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "papua_new_guinea",
+      "name": "Papua New Guinea",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "paraguay",
+      "name": "Paraguay",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "pennsylvania_united_states",
+      "name": "Pennsylvania",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "peru",
+      "name": "Peru",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "philippines",
+      "name": "Philippines",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "pitcairn",
+      "name": "Pitcairn",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "poland",
+      "name": "Poland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "portugal",
+      "name": "Portugal",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "prince_edward_island_canada",
+      "name": "Prince Edward Island",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "puerto_rico",
+      "name": "Puerto Rico",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "puerto_rico_united_states",
+      "name": "Puerto Rico",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "qatar",
+      "name": "Qatar",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "queensland_australia",
+      "name": "Queensland",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "québec_canada",
+      "name": "Québec",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "rhineland_palatinate_germany",
+      "name": "Rhineland-Palatinate",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "rhode_island_united_states",
+      "name": "Rhode Island",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "romania",
+      "name": "Romania",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "russian_federation",
+      "name": "Russian Federation",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "rwanda",
+      "name": "Rwanda",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "réunion",
+      "name": "Réunion",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saarland_germany",
+      "name": "Saarland",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "saint_barthélemy",
+      "name": "Saint Barthélemy",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_helena_ascension_and_tristan_da_cunha",
+      "name": "Saint Helena, Ascension and Tristan da Cunha",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_kitts_and_nevis",
+      "name": "Saint Kitts and Nevis",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_lucia",
+      "name": "Saint Lucia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_martin_french_part",
+      "name": "Saint Martin (French part)",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_pierre_and_miquelon",
+      "name": "Saint Pierre and Miquelon",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saint_vincent_and_the_grenadines",
+      "name": "Saint Vincent and the Grenadines",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "samoa",
+      "name": "Samoa",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "san_francisco",
+      "name": "San Francisco",
+      "level": "us_city",
+      "parent_id": "california",
+      "domains_priority": [
+        "privacy",
+        "accessibility"
+      ],
+      "rationale": "Municipal surveillance/privacy ordinances and accessibility procurement norms in a core Meta HQ metro."
+    },
+    {
+      "id": "san_marino",
+      "name": "San Marino",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sao_tome_and_principe",
+      "name": "Sao Tome and Principe",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saskatchewan_canada",
+      "name": "Saskatchewan",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "saudi_arabia",
+      "name": "Saudi Arabia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "saxony_anhalt_germany",
+      "name": "Saxony-Anhalt",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "saxony_germany",
+      "name": "Saxony",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "schleswig_holstein_germany",
+      "name": "Schleswig-Holstein",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "seattle",
+      "name": "Seattle",
+      "level": "us_city",
+      "parent_id": "washington",
+      "domains_priority": [
+        "privacy"
+      ],
+      "rationale": "Municipal privacy principles and significant West Coast platform employment/regulatory attention."
+    },
+    {
+      "id": "senegal",
+      "name": "Senegal",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "serbia",
+      "name": "Serbia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "seychelles",
+      "name": "Seychelles",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sierra_leone",
+      "name": "Sierra Leone",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sint_maarten_dutch_part",
+      "name": "Sint Maarten (Dutch part)",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "slovakia",
+      "name": "Slovakia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "slovenia",
+      "name": "Slovenia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "solomon_islands",
+      "name": "Solomon Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "somalia",
+      "name": "Somalia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "south_africa",
+      "name": "South Africa",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "south_australia_australia",
+      "name": "South Australia",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "south_carolina_united_states",
+      "name": "South Carolina",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "south_dakota_united_states",
+      "name": "South Dakota",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "south_georgia_and_the_south_sandwich_islands",
+      "name": "South Georgia and the South Sandwich Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "south_sudan",
+      "name": "South Sudan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sri_lanka",
+      "name": "Sri Lanka",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sudan",
+      "name": "Sudan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "suriname",
+      "name": "Suriname",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "svalbard_and_jan_mayen",
+      "name": "Svalbard and Jan Mayen",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "sweden",
+      "name": "Sweden",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "switzerland",
+      "name": "Switzerland",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "syrian_arab_republic",
+      "name": "Syrian Arab Republic",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "taiwan_province_of_china",
+      "name": "Taiwan, Province of China",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tajikistan",
+      "name": "Tajikistan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tanzania_united_republic_of",
+      "name": "Tanzania, United Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tasmania_australia",
+      "name": "Tasmania",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "tennessee_united_states",
+      "name": "Tennessee",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "texas_united_states",
+      "name": "Texas",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "thailand",
+      "name": "Thailand",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "thuringia_germany",
+      "name": "Thuringia",
+      "level": "state_province",
+      "parent_id": "germany"
+    },
+    {
+      "id": "timor_leste",
+      "name": "Timor-Leste",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "togo",
+      "name": "Togo",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tokelau",
+      "name": "Tokelau",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tonga",
+      "name": "Tonga",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "trinidad_and_tobago",
+      "name": "Trinidad and Tobago",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tunisia",
+      "name": "Tunisia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "turkey",
+      "name": "Turkey",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "turkmenistan",
+      "name": "Turkmenistan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "turks_and_caicos_islands",
+      "name": "Turks and Caicos Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "tuvalu",
+      "name": "Tuvalu",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "uganda",
+      "name": "Uganda",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "ukraine",
+      "name": "Ukraine",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "united_arab_emirates",
+      "name": "United Arab Emirates",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "united_kingdom",
+      "name": "United Kingdom",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "united_states",
+      "name": "United States",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "united_states_minor_outlying_islands",
+      "name": "United States Minor Outlying Islands",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "uruguay",
+      "name": "Uruguay",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "us_virgin_islands_united_states",
+      "name": "U.S. Virgin Islands",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "utah_united_states",
+      "name": "Utah",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "uzbekistan",
+      "name": "Uzbekistan",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "vanuatu",
+      "name": "Vanuatu",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "venezuela_bolivarian_republic_of",
+      "name": "Venezuela, Bolivarian Republic of",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "vermont_united_states",
+      "name": "Vermont",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "victoria_australia",
+      "name": "Victoria",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "viet_nam",
+      "name": "Viet Nam",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "virgin_islands_british",
+      "name": "Virgin Islands, British",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "virgin_islands_us",
+      "name": "Virgin Islands, U.S.",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "virginia_united_states",
+      "name": "Virginia",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "wallis_and_futuna",
+      "name": "Wallis and Futuna",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "washington_united_states",
+      "name": "Washington",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "west_virginia_united_states",
+      "name": "West Virginia",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "western_australia_australia",
+      "name": "Western Australia",
+      "level": "state_province",
+      "parent_id": "australia"
+    },
+    {
+      "id": "western_sahara",
+      "name": "Western Sahara",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "wisconsin_united_states",
+      "name": "Wisconsin",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "wyoming_united_states",
+      "name": "Wyoming",
+      "level": "us_state",
+      "parent_id": "united_states"
+    },
+    {
+      "id": "yemen",
+      "name": "Yemen",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "yukon_canada",
+      "name": "Yukon",
+      "level": "state_province",
+      "parent_id": "canada"
+    },
+    {
+      "id": "zambia",
+      "name": "Zambia",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "zimbabwe",
+      "name": "Zimbabwe",
+      "level": "country",
+      "parent_id": null
+    },
+    {
+      "id": "åland_islands",
+      "name": "Åland Islands",
+      "level": "country",
+      "parent_id": null
+    }
+  ]
+}

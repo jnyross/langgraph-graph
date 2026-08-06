@@ -46,7 +46,8 @@ Thumbs.db
 *.swp
 
 
-# Meta legal dossiers
+# Meta legal dossiers and jurisdiction runs
 data/dossiers/*
 !data/dossiers/.gitkeep
+data/jurisdictions/runs/
 .worktrees/

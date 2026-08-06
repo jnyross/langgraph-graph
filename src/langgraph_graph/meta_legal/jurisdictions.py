@@ -22,7 +22,9 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_RELATIVE = Path("data/jurisdictions/meta_operating_catalog.json")
 
-VALID_LEVELS = frozenset({"supranational", "country", "us_state", "us_city"})
+VALID_LEVELS = frozenset(
+    {"supranational", "country", "us_state", "us_city", "state_province", "city"}
+)
 
 
 def default_catalog_path() -> Path:
@@ -74,6 +76,8 @@ def load_catalog(path: str | Path | None = None) -> dict[str, Any]:
             raise ValueError(f"jurisdictions[{i}].name must be a non-empty string")
         if not isinstance(level, str) or not level.strip():
             raise ValueError(f"jurisdictions[{i}].level must be a non-empty string")
+        if level not in VALID_LEVELS:
+            raise ValueError(f"jurisdictions[{i}].level is unsupported: {level!r}")
         if jid in seen:
             raise ValueError(f"duplicate jurisdiction id: {jid!r}")
         seen.add(jid)

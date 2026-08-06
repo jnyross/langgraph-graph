@@ -7,6 +7,7 @@ Thread-safe for concurrent fetches within a cell worker.
 from __future__ import annotations
 
 import contextlib
+import os
 import re
 import threading
 import time
@@ -174,6 +175,9 @@ def _wait_host_spacing(url: str) -> None:
 def _firecrawl_api_url() -> str:
     from langgraph_graph.meta_legal._env import env_str
 
+    # Cloud key present with no explicit URL: default to Firecrawl cloud.
+    if os.getenv("FIRECRAWL_API_KEY") and os.getenv(FIRECRAWL_API_URL_ENV) is None:
+        return "https://api.firecrawl.dev"
     return env_str(FIRECRAWL_API_URL_ENV, "http://localhost:3002").rstrip("/")
 
 
@@ -247,8 +251,13 @@ def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
         acquired = sem.acquire(timeout=3.0)
         if not acquired:
             return ""
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        fc_key = os.getenv("FIRECRAWL_API_KEY")
+        if fc_key:
+            headers["Authorization"] = f"Bearer {fc_key}"
         response = httpx.post(
             f"{_firecrawl_api_url()}/v2/scrape",
+            headers=headers,
             json={
                 "url": target,
                 "formats": ["markdown"],
