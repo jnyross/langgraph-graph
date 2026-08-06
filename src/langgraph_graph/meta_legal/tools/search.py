@@ -263,14 +263,12 @@ def _search_firecrawl_api(query: str, max_results: int) -> list[dict[str, str]]:
         return []
 
     try:
+        # Request search results without full-page scraping. Firecrawl returns
+        # title/url/description quickly; deep scraping is handled by fetch_url.
         response = httpx.post(
             f"{_firecrawl_api_url()}/v2/search",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "query": q,
-                "limit": limit,
-                "scrapeOptions": {"formats": [{"type": "markdown"}]},
-            },
+            json={"query": q, "limit": limit},
             timeout=30.0,
         )
         response.raise_for_status()
