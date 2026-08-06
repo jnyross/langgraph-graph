@@ -6,11 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from langgraph_graph.jurisdiction_catalog.models import Candidate, candidate_id
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.jurisdictions import load_catalog
 from langgraph_graph.meta_legal.models import slugify
-
-from ..models import Candidate, candidate_id
-from ..state import CatalogState
 
 DEFAULT_SEED = (
     Path(__file__).resolve().parents[4] / "data/jurisdictions/jurisdiction_catalog_seed.json"

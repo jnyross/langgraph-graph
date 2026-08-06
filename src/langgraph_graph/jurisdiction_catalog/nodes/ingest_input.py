@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from ..state import CatalogState
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 
 
 def ingest_input(state: CatalogState) -> dict[str, Any]:

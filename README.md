@@ -69,6 +69,9 @@ Second Studio graph for multi-jurisdiction Meta legal research. Graph id: **`met
 Third Studio graph for evidence-backed jurisdiction catalog research. Graph id:
 **`jurisdiction_catalog`**. It plans from the committed deterministic seed,
 verifies candidates, and writes reports under `data/jurisdictions/runs/`.
+Optional `discover_extra` is off by default and uses a bounded search/model
+request when enabled; parse or provider failures are recorded in the run
+report rather than retried indefinitely.
 When enabled (the default), successful discovery runs auto-widen the research
 seed with newly discovered candidates. This only expands future research:
 every candidate still requires verification and deterministic validation.

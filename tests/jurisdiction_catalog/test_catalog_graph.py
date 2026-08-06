@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 
@@ -137,13 +139,92 @@ def test_verification_uses_both_conditions(
     monkeypatch.setattr(
         module,
         "web_search",
-        lambda query, max_results: [{"url": "https://example.test", "title": "e", "snippet": "e"}],
+        lambda query, max_results: [
+            {
+                "url": "https://example.test/x",
+                "title": "X platform authority",
+                "snippet": "X evidence",
+            }
+        ],
     )
-    monkeypatch.setattr(module, "fetch_url", lambda url, max_chars: "official evidence")
+    monkeypatch.setattr(module, "fetch_url", lambda url, max_chars: "X official evidence")
     monkeypatch.setattr(module, "get_llm", lambda: LLM())
     candidate = Candidate(id="x", name="X", level="country")
     result = module.verify_jurisdiction({"candidate": candidate})
     assert result["verifications"][0].verdict == expected
+
+
+def test_verification_filters_off_topic_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.verify_jurisdiction"
+    )
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(
+        module,
+        "web_search",
+        lambda query, max_results: [
+            {
+                "url": "https://example.test/kazakhstan",
+                "title": "FTC v. Meta",
+                "snippet": "Kazakhstan regulator",
+            }
+        ],
+    )
+    monkeypatch.setattr(module, "fetch_url", lambda url, max_chars: "Kazakhstan authority")
+    candidate = Candidate(id="japan", name="Japan", level="country")
+    result = module.verify_jurisdiction({"candidate": candidate})
+    verification = result["verifications"][0]
+    assert verification.verdict == "uncertain"
+    assert verification.evidence == []
+    assert "no relevant evidence" in verification.errors[0]
+
+
+def test_verification_keeps_only_relevant_mixed_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.verify_jurisdiction"
+    )
+
+    class Structured:
+        def invoke(self, messages):
+            return Assessment(
+                services_available=True,
+                authority_exists=True,
+                verdict="include",
+                confidence=0.9,
+                rationale="relevant",
+            )
+
+    class LLM:
+        def with_structured_output(self, schema):
+            return Structured()
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(
+        module,
+        "web_search",
+        lambda query, max_results: [
+            {"url": "https://example.test/japan", "title": "Japan law", "snippet": ""},
+            {
+                "url": "https://example.test/kazakhstan",
+                "title": "Kazakhstan law",
+                "snippet": "",
+            },
+        ],
+    )
+    monkeypatch.setattr(module, "fetch_url", lambda url, max_chars: f"Source text for {url}")
+    monkeypatch.setattr(module, "get_llm", lambda: LLM())
+    candidate = Candidate(id="japan", name="Japan", level="country")
+    result = module.verify_jurisdiction({"candidate": candidate})
+    verification = result["verifications"][0]
+    assert verification.verdict == "include"
+    assert len(verification.evidence) == 1
+    assert "japan" in verification.evidence[0].url
 
 
 def test_validation_binds_each_candidate_in_multi_candidate_fan_in() -> None:
@@ -256,6 +337,18 @@ def test_graph_topology_and_compile() -> None:
         "write_catalog",
     } <= names
     assert build_graph(False).get_graph() is not None
+
+
+def test_langgraph_json_file_path_entries_load() -> None:
+    config = json.loads(Path("langgraph.json").read_text(encoding="utf-8"))
+    for graph_id, entry in config["graphs"].items():
+        path_text, attribute = entry.rsplit(":", 1)
+        path = Path(path_text)
+        spec = importlib.util.spec_from_file_location(f"file_path_graph_{graph_id}", path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        assert getattr(module, attribute) is not None
 
 
 def test_ingest_error_and_empty_candidates_write_artifacts(tmp_path) -> None:

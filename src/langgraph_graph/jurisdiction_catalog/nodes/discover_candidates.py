@@ -8,12 +8,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from langgraph_graph.jurisdiction_catalog.models import Candidate, candidate_id
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.llm import get_llm
 from langgraph_graph.meta_legal.tools.fetch import fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search
-
-from ..models import Candidate, candidate_id
-from ..state import CatalogState
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts/discover.md"
 
@@ -31,7 +30,7 @@ class _Proposal(BaseModel):
 class _DiscoveryResponse(BaseModel):
     """Structured discovery response."""
 
-    candidates: list[_Proposal] = Field(default_factory=list)
+    candidates: list[_Proposal] = Field(default_factory=list, max_length=5)
 
 
 def discover_candidates(state: CatalogState) -> dict[str, Any]:
@@ -45,16 +44,16 @@ def discover_candidates(state: CatalogState) -> dict[str, Any]:
         results = web_search(
             "new supranational online platform privacy regulator jurisdiction "
             "subnational social media law",
-            max_results=5,
+            max_results=3,
         )
         material = []
         for result in results:
             url = result.get("url", "")
             text = fetch_url(url, max_chars=1800) if url else ""
-            material.append(f"TITLE: {result.get('title', '')}\nURL: {url}\n{text[:600]}")
+            material.append(f"TITLE: {result.get('title', '')}\nURL: {url}\n{text[:300]}")
         prompt = _PROMPT_PATH.read_text(encoding="utf-8")
         response = (
-            get_llm()
+            get_llm(max_tokens=1200)
             .with_structured_output(_DiscoveryResponse)
             .invoke(
                 [

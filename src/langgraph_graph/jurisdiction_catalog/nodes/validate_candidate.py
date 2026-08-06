@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..models import SUPPORTED_LEVELS, Candidate, Verification
-from ..state import CatalogState
+from langgraph_graph.jurisdiction_catalog.models import SUPPORTED_LEVELS, Candidate, Verification
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 
 
 def _validate_one(

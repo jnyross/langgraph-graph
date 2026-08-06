@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.jurisdictions import default_catalog_path, load_catalog
 from langgraph_graph.meta_legal.run_config import write_run_metrics
-
-from ..state import CatalogState
 
 
 def _repo_root() -> Path:
@@ -91,6 +90,10 @@ def write_catalog(state: CatalogState) -> dict[str, Any]:
         report += "".join(f"- {reason}\n" for reason in promotion_reasons)
     else:
         report += "Promotion passed validation and sanity gates.\n"
+    errors = list(state.get("errors") or [])
+    if errors:
+        report += "\nErrors:\n"
+        report += "".join(f"- {error}\n" for error in errors)
     (out / "report.md").write_text(report, encoding="utf-8")
     write_run_metrics(
         out,

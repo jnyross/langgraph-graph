@@ -1,6 +1,6 @@
 # Additional candidate discovery
 
-Propose only jurisdictions not already in the supplied candidate list that
+Propose at most five jurisdictions not already in the supplied candidate list that
 appear to have both Meta consumer services and independent law-making or
 regulatory authority over privacy, competition, youth safety, intellectual
 property, or accessibility. Focus on newly relevant supranational bodies and

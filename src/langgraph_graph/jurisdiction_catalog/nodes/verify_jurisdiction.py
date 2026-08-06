@@ -6,14 +6,31 @@ import os
 from pathlib import Path
 from typing import Any
 
+from langgraph_graph.jurisdiction_catalog.models import (
+    Assessment,
+    Candidate,
+    Evidence,
+    Verdict,
+    Verification,
+)
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.llm import get_llm
 from langgraph_graph.meta_legal.tools.fetch import fetch_url
 from langgraph_graph.meta_legal.tools.search import web_search
 
-from ..models import Assessment, Candidate, Evidence, Verdict, Verification
-from ..state import CatalogState
-
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts/verify.md"
+
+
+def _evidence_mentions_candidate(candidate: Candidate, evidence: Evidence) -> bool:
+    """Return whether a source names the candidate or a common alias."""
+    haystack = " ".join((evidence.title, evidence.url, evidence.snippet)).lower()
+    aliases = {
+        candidate.name.lower(),
+        candidate.id.replace("_", " ").lower(),
+    }
+    if candidate.id == "united_states":
+        aliases.update({"united states", "usa", "u.s.", "us"})
+    return any(alias in haystack for alias in aliases if alias)
 
 
 def _prompt(candidate: Candidate, evidence: list[Evidence]) -> str:
@@ -43,24 +60,31 @@ def verify_jurisdiction(state: CatalogState) -> dict[str, Any]:
     evidence: list[Evidence] = []
     errors: list[str] = []
     try:
-        results = web_search(
-            f"{candidate.name} Meta Facebook Instagram WhatsApp availability law regulator",
-            max_results=3,
+        queries = (
+            f"{candidate.name} Facebook Instagram WhatsApp availability blocked access residents",
+            f"{candidate.name} data protection regulator platform privacy law competition "
+            "youth safety intellectual property accessibility",
         )
-        for result in results[:3]:
-            url = result.get("url", "")
-            text = fetch_url(url, max_chars=2500) if url else ""
-            evidence.append(
-                Evidence(
+        seen_urls: set[str] = set()
+        for query in queries:
+            results = web_search(query, max_results=3)
+            for result in results[:3]:
+                url = result.get("url", "")
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                text = fetch_url(url, max_chars=2500) if url else ""
+                candidate_evidence = Evidence(
                     url=url,
                     title=result.get("title", ""),
                     snippet=(text or result.get("snippet", ""))[:500],
                 )
-            )
+                if _evidence_mentions_candidate(candidate, candidate_evidence):
+                    evidence.append(candidate_evidence)
     except Exception as exc:
         errors.append(f"evidence tools failed: {exc}")
     if not evidence:
-        errors.append("no evidence retrieved")
+        errors.append("no relevant evidence retrieved for jurisdiction")
         return {
             "verifications": [
                 Verification(

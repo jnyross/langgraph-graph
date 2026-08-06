@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..state import CatalogState
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 
 
 def aggregate(state: CatalogState) -> dict[str, object]:

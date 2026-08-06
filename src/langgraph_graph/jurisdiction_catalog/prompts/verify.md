@@ -5,6 +5,10 @@ catalog. Use only the supplied search results and fetched source text. Return
 the structured fields requested by the caller; do not infer facts that are not
 supported by the evidence.
 
+The evidence must discuss the named jurisdiction. If the supplied evidence
+does not mention the jurisdiction by name or a clearly recognizable alias,
+return `uncertain` regardless of what the source says about another place.
+
 Make two independent judgments:
 
 1. **Services available:** are Facebook, Instagram, or WhatsApp practically

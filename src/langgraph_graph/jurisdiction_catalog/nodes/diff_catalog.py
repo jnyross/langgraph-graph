@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from langgraph_graph.jurisdiction_catalog.models import CatalogDiff
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.jurisdictions import load_catalog
-
-from ..models import CatalogDiff
-from ..state import CatalogState
 
 
 def compute_diff(

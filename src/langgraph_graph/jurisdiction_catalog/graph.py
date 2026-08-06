@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
-from .nodes import (
+from langgraph_graph.jurisdiction_catalog.nodes import (
     aggregate,
     diff_catalog,
     discover_candidates,
@@ -19,7 +19,7 @@ from .nodes import (
     widen_seed,
     write_catalog,
 )
-from .state import CatalogState
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 
 
 def fanout_candidates(state: CatalogState) -> list[Send] | str:

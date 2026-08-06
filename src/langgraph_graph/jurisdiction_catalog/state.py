@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from typing import Annotated, NotRequired, TypedDict
 
-from .models import Candidate, CatalogDiff, Verification
+from langgraph_graph.jurisdiction_catalog.models import Candidate, CatalogDiff, Verification
 
 
 class CatalogState(TypedDict):

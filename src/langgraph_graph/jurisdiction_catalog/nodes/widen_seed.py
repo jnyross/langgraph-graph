@@ -6,10 +6,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from langgraph_graph.jurisdiction_catalog.models import SUPPORTED_LEVELS, Candidate
+from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.jurisdictions import default_catalog_path
-
-from ..models import SUPPORTED_LEVELS, Candidate
-from ..state import CatalogState
 
 
 def _default_seed_path() -> Path:
