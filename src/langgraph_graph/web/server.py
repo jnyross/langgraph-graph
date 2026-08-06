@@ -89,7 +89,11 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
             # Use stderr; keep it terse
             import sys
 
-            sys.stderr.write(f"{self.client_address[0]} - - [{self.log_date_time_string()}] {fmt % args}\n")
+            log_line = (
+                f"{self.client_address[0]} - - "
+                f"[{self.log_date_time_string()}] {fmt % args}\n"
+            )
+            sys.stderr.write(log_line)
 
         # ---- helpers ----
 
@@ -103,7 +107,12 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
             self.end_headers()
             self.wfile.write(body)
 
-        def _send_text(self, text: str, content_type: str = "text/plain", status: int = 200) -> None:
+        def _send_text(
+            self,
+            text: str,
+            content_type: str = "text/plain",
+            status: int = 200,
+        ) -> None:
             body = text.encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", content_type)
@@ -166,16 +175,32 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
                 filtered = laws
                 if jurisdiction:
                     j_lower = jurisdiction.lower()
-                    filtered = [r for r in filtered if str(r.get("jurisdiction_id", "")).lower() == j_lower]
+                    filtered = [
+                        r
+                        for r in filtered
+                        if str(r.get("jurisdiction_id", "")).lower() == j_lower
+                    ]
                 if domain:
                     d_lower = domain.lower()
-                    filtered = [r for r in filtered if str(r.get("domain_id", "")).lower() == d_lower]
+                    filtered = [
+                        r
+                        for r in filtered
+                        if str(r.get("domain_id", "")).lower() == d_lower
+                    ]
                 if q:
                     q_lower = q.lower()
                     def _matches(rec: dict) -> bool:
                         haystack = " ".join(
                             str(rec.get(k) or "")
-                            for k in ("title", "citation", "excerpt", "source_url", "jurisdiction_id", "domain_id", "cell_id")
+                            for k in (
+                                "title",
+                                "citation",
+                                "excerpt",
+                                "source_url",
+                                "jurisdiction_id",
+                                "domain_id",
+                                "cell_id",
+                            )
                         ).lower()
                         return q_lower in haystack
 
@@ -285,10 +310,29 @@ def run_server(
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Law-matrix web server")
-    parser.add_argument("--port", type=int, default=_DEFAULT_PORT, help=f"Port to listen on (default: {_DEFAULT_PORT})")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1, use 0.0.0.0 for all)")
-    parser.add_argument("--web-root", dest="web_root", default=None, help="Static file directory (default: $WEB_ROOT or ./web)")
-    parser.add_argument("--dossier-root", dest="dossier_root", default=None, help="Dossier root (default: $DOSSIER_ROOT or data/dossiers)")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=_DEFAULT_PORT,
+        help=f"Port to listen on (default: {_DEFAULT_PORT})",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host (default: 127.0.0.1, use 0.0.0.0 for all)",
+    )
+    parser.add_argument(
+        "--web-root",
+        dest="web_root",
+        default=None,
+        help="Static file directory (default: $WEB_ROOT or ./web)",
+    )
+    parser.add_argument(
+        "--dossier-root",
+        dest="dossier_root",
+        default=None,
+        help="Dossier root (default: $DOSSIER_ROOT or data/dossiers)",
+    )
     args = parser.parse_args(argv)
 
     wd = _web_root(args.web_root)

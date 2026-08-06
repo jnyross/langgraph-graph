@@ -2144,7 +2144,6 @@ def run_research_cell(
     context = "\n\n".join(context_parts)
 
     # --- deterministic harvest first (gold-safe: skip LLM when >=3 drafts) ---
-    drafts: list[LawRecordDraft] = []
     try:
         harvest_fetch = fetch
         seed_bodies_n = sum(1 for u in seed_urls if (fetched_by_url.get(u) or "").strip())
