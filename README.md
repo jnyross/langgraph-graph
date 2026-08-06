@@ -69,8 +69,11 @@ Second Studio graph for multi-jurisdiction Meta legal research. Graph id: **`met
 Third Studio graph for evidence-backed jurisdiction catalog research. Graph id:
 **`jurisdiction_catalog`**. It plans from the committed deterministic seed,
 verifies candidates, and writes reports under `data/jurisdictions/runs/`.
-Runs never overwrite `meta_operating_catalog.json` unless promotion is
-explicitly requested with zero uncertain blockers.
+When enabled (the default), successful discovery runs auto-widen the research
+seed with newly discovered candidates. This only expands future research:
+every candidate still requires verification and deterministic validation.
+The live `meta_operating_catalog.json` is a separate tier and never changes
+unless promotion is explicitly requested and passes its existing sanity gates.
 
 This graph is **no-HITL** — it does not call `interrupt()`. Runs write dossiers under `data/dossiers/<run_id>/`.
 

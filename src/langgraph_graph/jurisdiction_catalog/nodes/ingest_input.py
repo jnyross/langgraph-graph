@@ -32,6 +32,7 @@ def ingest_input(state: CatalogState) -> dict[str, Any]:
         "regions": regions,
         "seed_path": str(state.get("seed_path") or ""),
         "discover_extra": bool(state.get("discover_extra", False)),
+        "auto_widen_seed": bool(state.get("auto_widen_seed", True)),
         "write_target": str(state.get("write_target") or "data/jurisdictions/runs"),
         "promote": bool(state.get("promote", False)),
         "run_id": str(state.get("run_id") or uuid4()),

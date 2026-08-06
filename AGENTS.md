@@ -52,6 +52,10 @@ The jurisdiction catalog graph writes research runs under
 `data/jurisdictions/runs/` and must not overwrite the live
 `meta_operating_catalog.json` unless promotion is explicitly requested and
 there are no uncertain verification blockers.
+Discovery auto-widens the committed research seed by default. Seed widening
+only expands what future runs research; discovered candidates still require
+verification and validation before they can enter the live catalog. Disable
+this with the `auto_widen_seed` input when needed.
 
 ### `meta_legal` (no HITL)
 

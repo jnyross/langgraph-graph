@@ -7,6 +7,7 @@ from .ingest_input import ingest_input
 from .plan_candidates import plan_candidates
 from .validate_candidate import validate_candidate
 from .verify_jurisdiction import verify_jurisdiction
+from .widen_seed import widen_seed
 from .write_catalog import write_catalog
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "plan_candidates",
     "validate_candidate",
     "verify_jurisdiction",
+    "widen_seed",
     "write_catalog",
 ]

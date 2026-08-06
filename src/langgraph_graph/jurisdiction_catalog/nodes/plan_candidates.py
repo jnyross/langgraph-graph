@@ -20,7 +20,10 @@ DEFAULT_SEED = (
 def _read(path: Path) -> list[dict[str, Any]]:
     """Read candidate entries from a seed document."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    return list(data.get("candidates") or data.get("jurisdictions") or [])
+    return [
+        *data.get("candidates", []),
+        *data.get("discovered_candidates", []),
+    ] or list(data.get("jurisdictions") or [])
 
 
 def plan_candidates(state: CatalogState) -> dict[str, Any]:

@@ -16,6 +16,7 @@ from .nodes import (
     plan_candidates,
     validate_candidate,
     verify_jurisdiction,
+    widen_seed,
     write_catalog,
 )
 from .state import CatalogState
@@ -38,6 +39,7 @@ def _assemble_graph() -> StateGraph:
     graph.add_node("discover_candidates", discover_candidates)  # type: ignore[type-var]
     graph.add_node("verify_jurisdiction", verify_jurisdiction)  # type: ignore[type-var]
     graph.add_node("validate_candidate", validate_candidate)  # type: ignore[type-var]
+    graph.add_node("widen_seed", widen_seed)  # type: ignore[type-var]
     graph.add_node("aggregate", aggregate)  # type: ignore[type-var]
     graph.add_node("diff_catalog", diff_catalog)  # type: ignore[type-var]
     graph.add_node("write_catalog", write_catalog)  # type: ignore[type-var]
@@ -49,7 +51,8 @@ def _assemble_graph() -> StateGraph:
     )
     graph.add_edge("verify_jurisdiction", "aggregate")
     graph.add_edge("aggregate", "validate_candidate")
-    graph.add_edge("validate_candidate", "diff_catalog")
+    graph.add_edge("validate_candidate", "widen_seed")
+    graph.add_edge("widen_seed", "diff_catalog")
     graph.add_edge("diff_catalog", "write_catalog")
     graph.add_edge("write_catalog", END)
     return graph

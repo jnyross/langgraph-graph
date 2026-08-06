@@ -14,6 +14,7 @@ from langgraph_graph.jurisdiction_catalog.models import (
 from langgraph_graph.jurisdiction_catalog.nodes.diff_catalog import compute_diff
 from langgraph_graph.jurisdiction_catalog.nodes.plan_candidates import plan_candidates
 from langgraph_graph.jurisdiction_catalog.nodes.validate_candidate import validate_candidate
+from langgraph_graph.jurisdiction_catalog.nodes.widen_seed import widen_seed
 from langgraph_graph.meta_legal.jurisdictions import load_catalog
 from langgraph_graph.meta_legal.models import slugify
 
@@ -249,6 +250,7 @@ def test_graph_topology_and_compile() -> None:
         "discover_candidates",
         "verify_jurisdiction",
         "validate_candidate",
+        "widen_seed",
         "aggregate",
         "diff_catalog",
         "write_catalog",
@@ -274,3 +276,95 @@ def test_shipped_catalog_loads_with_strict_levels() -> None:
     catalog = load_catalog()
     assert catalog["jurisdictions"]
     assert all(item["level"] for item in catalog["jurisdictions"])
+
+
+def test_widen_seed_appends_discovered_candidate_idempotently(tmp_path) -> None:
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {
+                "version": "2",
+                "source": "test",
+                "candidates": [{"id": "existing", "name": "Existing", "level": "country"}],
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    candidate = Candidate(
+        id="new_body",
+        name="New Body",
+        level="supranational",
+        source="discovered",
+    )
+    state = {
+        "seed_path": str(seed),
+        "auto_widen_seed": True,
+        "discovery_ran": True,
+        "discovered_candidates": [candidate],
+        "candidates": [candidate],
+        "rejected": [{"candidate": candidate.model_dump(), "reason": "uncertain"}],
+    }
+    widen_seed(state)
+    first = seed.read_bytes()
+    document = json.loads(first)
+    assert document["discovered_candidates"][0]["source"] == "discovered"
+    widen_seed(state)
+    assert seed.read_bytes() == first
+
+
+@pytest.mark.parametrize(
+    ("state_key", "state_value"),
+    [("auto_widen_seed", False), ("discovery_ran", False)],
+)
+def test_widen_seed_disabled_or_offline_leaves_seed_untouched(
+    tmp_path, state_key: str, state_value: bool
+) -> None:
+    seed = tmp_path / "seed.json"
+    original = '{"version":"2","candidates":[]}\n'
+    seed.write_text(original, encoding="utf-8")
+    candidate = Candidate(
+        id="new_body",
+        name="New Body",
+        level="supranational",
+        source="discovered",
+    )
+    state = {
+        "seed_path": str(seed),
+        "auto_widen_seed": True,
+        "discovery_ran": True,
+        "discovered_candidates": [candidate],
+        "candidates": [candidate],
+        state_key: state_value,
+    }
+    widen_seed(state)
+    assert seed.read_text(encoding="utf-8") == original
+
+
+def test_widen_seed_skips_structurally_invalid_candidate(tmp_path) -> None:
+    seed = tmp_path / "seed.json"
+    original = '{"version":"2","candidates":[]}\n'
+    seed.write_text(original, encoding="utf-8")
+    candidate = Candidate(
+        id="bad",
+        name="Bad",
+        level="unsupported",
+        source="discovered",
+    )
+    widen_seed(
+        {
+            "seed_path": str(seed),
+            "auto_widen_seed": True,
+            "discovery_ran": True,
+            "discovered_candidates": [candidate],
+            "candidates": [candidate],
+            "rejected": [
+                {
+                    "candidate": candidate.model_dump(),
+                    "reason": "unsupported_level",
+                }
+            ],
+        }
+    )
+    assert seed.read_text(encoding="utf-8") == original

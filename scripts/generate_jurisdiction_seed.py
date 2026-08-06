@@ -142,11 +142,21 @@ def generate(output: Path) -> None:
     current = json.loads(default_catalog_path().read_text(encoding="utf-8"))
     candidates.extend(item for item in current["jurisdictions"] if item.get("level") == "us_city")
     by_id = {item["id"]: item for item in candidates}
+    discovered = []
+    if output.is_file():
+        try:
+            previous = json.loads(output.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            previous = {}
+        discovered = list(previous.get("discovered_candidates") or [])
+    discovered_by_id = {item["id"]: item for item in discovered if item.get("id")}
     document = {
         "version": "2",
         "source": "ISO 3166-1 from iso-codes plus curated ISO 3166-2-style subnational sets and current US cities",
         "candidates": [by_id[key] for key in sorted(by_id)],
     }
+    if discovered_by_id:
+        document["discovered_candidates"] = list(discovered_by_id.values())
     output.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

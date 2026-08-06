@@ -37,9 +37,9 @@ class _DiscoveryResponse(BaseModel):
 def discover_candidates(state: CatalogState) -> dict[str, Any]:
     """Discover additions only when enabled and a model key is configured."""
     if not state.get("discover_extra"):
-        return {}
+        return {"discovery_ran": False}
     if not os.getenv("OPENROUTER_API_KEY") and not os.getenv("OPENAI_API_KEY"):
-        return {}
+        return {"discovery_ran": False}
     errors: list[str] = []
     try:
         results = web_search(
@@ -70,7 +70,7 @@ def discover_candidates(state: CatalogState) -> dict[str, Any]:
         )
     except Exception as exc:
         errors.append(f"candidate discovery failed: {exc}")
-        return {"errors": errors}
+        return {"discovery_ran": True, "errors": errors}
     existing = {item.id for item in state.get("candidates") or []}
     additions: list[Candidate] = []
     for proposal in parsed.candidates:
@@ -89,4 +89,9 @@ def discover_candidates(state: CatalogState) -> dict[str, Any]:
                 source="discovered",
             )
         )
-    return {"candidates": [*(state.get("candidates") or []), *additions], "errors": errors}
+    return {
+        "candidates": [*(state.get("candidates") or []), *additions],
+        "discovered_candidates": additions,
+        "discovery_ran": True,
+        "errors": errors,
+    }

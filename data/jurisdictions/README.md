@@ -15,8 +15,14 @@
 dataset, adds curated supranational bodies, all U.S. states/DC and inhabited
 territories, all Canadian provinces/territories, all German Länder, all
 Australian states/territories, and the current U.S. city set. Research runs
-discover and verify additions, then write `runs/<run_id>`; they never
-overwrite the live catalog by default.
+discover and verify additions, then write `runs/<run_id>`. Discovery runs
+auto-widen the seed by default by adding a separate
+`discovered_candidates` section. The generator preserves that section, so
+regeneration does not discard research-discovered candidates. Seed widening
+only expands future research; it does not promote anything into the live
+catalog. The live catalog remains unchanged unless `promote=True` is supplied
+and all existing promotion gates pass. Pass `auto_widen_seed=False` to disable
+seed widening for a run.
 
 ## Loader
 

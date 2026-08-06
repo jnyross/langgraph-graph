@@ -14,6 +14,9 @@ class CatalogState(TypedDict):
     regions: list[str]
     seed_path: str
     discover_extra: bool
+    auto_widen_seed: bool
+    discovery_ran: NotRequired[bool]
+    discovered_candidates: NotRequired[list[Candidate]]
     write_target: str
     promote: bool
     run_id: str
