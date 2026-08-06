@@ -89,4 +89,4 @@ curl -s http://127.0.0.1:8765/api/matrix
 curl -s 'http://127.0.0.1:8765/api/laws?q=privacy'
 ```
 
-Both should return `200` and valid JSON with `count`, `total`, `laws`, and `stats`.
+`/api/matrix` should return `200` and JSON with `runs`, `jurisdictions`, `domains`, `cells`, `laws`, and `stats`. `/api/laws` should return `200` and JSON with `count`, `total`, `filters`, and `laws`.
