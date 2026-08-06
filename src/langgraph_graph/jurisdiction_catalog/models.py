@@ -46,6 +46,16 @@ class Verification(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class Assessment(BaseModel):
+    """Structured LLM assessment of availability and legal authority."""
+
+    services_available: bool
+    authority_exists: bool
+    verdict: Verdict
+    confidence: float = Field(ge=0.0, le=1.0)
+    rationale: str
+
+
 class CatalogDiff(BaseModel):
     added: list[dict] = Field(default_factory=list)
     removed: list[dict] = Field(default_factory=list)

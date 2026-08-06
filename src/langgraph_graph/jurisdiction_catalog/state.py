@@ -19,6 +19,7 @@ class CatalogState(TypedDict):
     run_id: str
     candidates: list[Candidate]
     candidate: NotRequired[Candidate]
+    verification: NotRequired[Verification]
     verifications: Annotated[list[Verification], operator.add]
     validated: Annotated[list[Candidate], operator.add]
     rejected: Annotated[list[dict], operator.add]
