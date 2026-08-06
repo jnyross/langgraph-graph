@@ -2091,8 +2091,8 @@ def run_research_cell(
     # When curated seeds already yielded body text, only pull a couple of search
     # hits for diversity — quality is preserved via seed harvest + LLM context.
     if seed_hits >= 2:
-        search_only = [u for u in remaining if u not in seed_urls]
-        remaining = search_only[:2]
+        # Seeds already provide page text; skip extra search-hit fetches.
+        remaining = []
     workers = max(1, min(int(max_fetch_workers or 12), len(remaining) or 1))
     if remaining:
         with _DaemonThreadPoolExecutor(max_workers=workers) as pool:
