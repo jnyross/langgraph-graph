@@ -26,9 +26,9 @@ uv run langgraph dev
 # Studio: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
-- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL) and **`meta_legal`** (no-HITL research)
+- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL), **`meta_legal`** (no-HITL research), **`jurisdiction_catalog`** (no-HITL catalog research), and **`news_radar`** (no-HITL forward-signal intelligence)
 - Safari / CORS issues: `uv run langgraph dev --tunnel`
-- Script paths: `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL)
+- Script paths: `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL) · `uv run python examples/news_radar_smoke.py` (no-HITL)
 
 ## Studio export contract
 
@@ -36,6 +36,7 @@ uv run langgraph dev
 |--------|--------|--------------|
 | Module-level **`graph`** | `src/langgraph_graph/graph.py` (`agent`) | **None** — Agent Server injects one for Studio |
 | Module-level **`graph`** | `src/langgraph_graph/meta_legal/graph.py` (`meta_legal`) | **None** — same Studio contract |
+| Module-level **`graph`** | `src/langgraph_graph/news_radar/graph.py` (`news_radar`) | **None** — same Studio contract |
 | **`build_graph()`** | same modules | **MemorySaver** (or optional checkpointer arg) for scripts/examples |
 
 Do not attach a custom checkpointer to either Studio `graph` export.
@@ -45,7 +46,32 @@ Do not attach a custom checkpointer to either Studio `graph` export.
 ```text
 "agent": "./src/langgraph_graph/graph.py:graph"
 "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph"
+"jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph"
+"news_radar": "./src/langgraph_graph/news_radar/graph.py:graph"
 ```
+
+The jurisdiction catalog graph writes research runs under
+`data/jurisdictions/runs/` and must not overwrite the live
+`meta_operating_catalog.json` unless promotion is explicitly requested and
+there are no uncertain verification blockers.
+Discovery auto-widens the committed research seed by default. Seed widening
+only expands what future runs research; discovered candidates still require
+verification and validation before they can enter the live catalog. Disable
+this with the `auto_widen_seed` input when needed.
+
+### `news_radar` (no HITL)
+
+- **Do not** add `interrupt()` in `news_radar` — the radar is fully automated.
+- Searches news, trade press, law-firm blogs, think-tank blogs and wire sources for
+  forward-looking signals (bills, amendments, consultations, enforcement probes,
+  litigation, regulator press releases, credible rumors).
+- Reads from `data/jurisdictions/meta_operating_catalog.json` and the latest
+  `data/dossiers/<run_id>/index.json` as context.
+- Writes runs to `data/radar/<run_id>/` (`manifest.json`, `index.json`, `signals/`,
+  `clusters.json`, `timeline.json`, `cells/`, `rejected/`, `delta.json`,
+  `run_metrics.json`).
+- Input: `jurisdictions: list[str]`, `domains: list[str]`, `subject: str = "Meta"`,
+  `lookback_days: int = 14`, `levels: list[str]`, `include_rumors: bool = False`.
 
 ### `meta_legal` (no HITL)
 

@@ -16,14 +16,13 @@ from uuid import uuid4
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from langgraph_graph.jurisdiction.state import JurisdictionState
 from langgraph_graph.meta_legal.jurisdictions import (
     VALID_LEVELS,
     list_jurisdiction_names,
     load_catalog,
     resolve_jurisdiction_names,
 )
-
-from .state import JurisdictionState
 
 
 def ingest_input(state: JurisdictionState) -> dict[str, Any]:

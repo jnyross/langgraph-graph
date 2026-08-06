@@ -16,7 +16,8 @@ import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from langgraph_graph.meta_legal.tools._pool import (
@@ -40,8 +41,43 @@ _BACKEND_ATTEMPT_TIMEOUT_SEC = 3.0
 # Overall budget for one parallel backend wave (first non-empty wins).
 _BACKEND_WAVE_TIMEOUT_SEC = 4.0
 
-# In-process cache: (normalized_query, max_results) -> results
-_SEARCH_CACHE: dict[tuple[str, int], list[dict[str, str]]] = {}
+
+class SearchOptions:
+    """Optional tuning for a web-search query.
+
+    Default construction is intentionally identity-like so callers that do not
+    pass options share the same cache key as the original ``web_search``.
+    """
+
+    def __init__(
+        self,
+        *,
+        topic: Literal["general", "news"] = "general",
+        recency_days: int | None = None,
+        include_domains: tuple[str, ...] | list[str] = (),
+        exclude_domains: tuple[str, ...] | list[str] = (),
+    ) -> None:
+        self.topic = topic if topic in {"general", "news"} else "general"
+        self.recency_days = recency_days
+        self.include_domains = tuple(str(d).strip().lower() for d in include_domains if d)
+        self.exclude_domains = tuple(str(d).strip().lower() for d in exclude_domains if d)
+
+    def __hash__(self) -> int:
+        return hash((self.topic, self.recency_days, self.include_domains, self.exclude_domains))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SearchOptions):
+            return NotImplemented
+        return (
+            self.topic == other.topic
+            and self.recency_days == other.recency_days
+            and self.include_domains == other.include_domains
+            and self.exclude_domains == other.exclude_domains
+        )
+
+
+# In-process cache: (normalized_query, max_results, options_key) -> results
+_SEARCH_CACHE: dict[tuple[str, int, int], list[dict[str, str]]] = {}
 _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 256
 
@@ -119,12 +155,17 @@ def _dedupe_results(results: list[dict[str, str]]) -> list[dict[str, str]]:
     return out
 
 
-def _cache_key(query: str, max_results: int) -> tuple[str, int]:
-    return (query.strip().lower(), max(1, int(max_results or 5)))
+def _cache_key(
+    query: str, max_results: int, options: SearchOptions | None = None
+) -> tuple[str, int, int]:
+    opt_key = hash(SearchOptions()) if options is None else hash(options)
+    return (query.strip().lower(), max(1, int(max_results or 5)), opt_key)
 
 
-def _cache_get(query: str, max_results: int) -> list[dict[str, str]] | None:
-    key = _cache_key(query, max_results)
+def _cache_get(
+    query: str, max_results: int, options: SearchOptions | None = None
+) -> list[dict[str, str]] | None:
+    key = _cache_key(query, max_results, options)
     with _CACHE_LOCK:
         hit = _SEARCH_CACHE.get(key)
         if hit is None:
@@ -133,8 +174,13 @@ def _cache_get(query: str, max_results: int) -> list[dict[str, str]] | None:
         return [dict(item) for item in hit]
 
 
-def _cache_put(query: str, max_results: int, results: list[dict[str, str]]) -> None:
-    key = _cache_key(query, max_results)
+def _cache_put(
+    query: str,
+    max_results: int,
+    results: list[dict[str, str]],
+    options: SearchOptions | None = None,
+) -> None:
+    key = _cache_key(query, max_results, options)
     stored = [dict(item) for item in results]
     with _CACHE_LOCK:
         if len(_SEARCH_CACHE) >= _CACHE_MAX and key not in _SEARCH_CACHE:
@@ -195,7 +241,9 @@ def reset_search_breaker() -> None:
         _BREAKER_OPENED_AT = None
 
 
-def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
+def _search_tavily(
+    query: str, max_results: int, options: SearchOptions | None = None
+) -> list[dict[str, str]]:
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
         return []
@@ -204,16 +252,28 @@ def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
     except Exception:
         return []
 
+    payload: dict[str, Any] = {
+        "api_key": api_key,
+        "query": query,
+        "max_results": max_results,
+        "include_answer": False,
+        "search_depth": "basic",
+    }
+    if options is not None:
+        if options.topic in {"general", "news"}:
+            payload["topic"] = options.topic
+        if options.recency_days:
+            start = (datetime.now(UTC) - timedelta(days=options.recency_days)).strftime("%Y-%m-%d")
+            payload["start_date"] = start
+        if options.include_domains:
+            payload["include_domains"] = list(options.include_domains)
+        if options.exclude_domains:
+            payload["exclude_domains"] = list(options.exclude_domains)
+
     try:
         response = httpx.post(
             "https://api.tavily.com/search",
-            json={
-                "api_key": api_key,
-                "query": query,
-                "max_results": max_results,
-                "include_answer": False,
-                "search_depth": "basic",
-            },
+            json=payload,
             timeout=20.0,
         )
         response.raise_for_status()
@@ -235,6 +295,90 @@ def _search_tavily(query: str, max_results: int) -> list[dict[str, str]]:
         if normalized:
             results.append(normalized)
         if len(results) >= max_results:
+            break
+    return _dedupe_results(results)
+
+
+def _firecrawl_api_url() -> str:
+    """Return Firecrawl base URL; cloud is default when an API key is present."""
+    from langgraph_graph.meta_legal._env import env_str
+
+    if os.getenv("FIRECRAWL_API_KEY") and os.getenv("FIRECRAWL_API_URL") is None:
+        return "https://api.firecrawl.dev"
+    return env_str("FIRECRAWL_API_URL", "http://localhost:3002").rstrip("/")
+
+
+def _search_firecrawl_api(
+    query: str, max_results: int, options: SearchOptions | None = None
+) -> list[dict[str, str]]:
+    """Search via Firecrawl v2 cloud/self-hosted API. Never raises."""
+    api_key = os.getenv("FIRECRAWL_API_KEY")
+    if not api_key:
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    limit = max(1, int(max_results or 5))
+    try:
+        import httpx
+    except Exception:
+        return []
+
+    body: dict[str, Any] = {"query": q, "limit": limit}
+    if options is not None:
+        if options.topic == "news":
+            body["sources"] = [{"type": "news"}]
+        if options.recency_days:
+            days = max(1, int(options.recency_days))
+            if days <= 1:
+                body["tbs"] = "qdr:d"
+            elif days <= 7:
+                body["tbs"] = "qdr:w"
+            elif days <= 30:
+                body["tbs"] = "qdr:m"
+            else:
+                body["tbs"] = "qdr:y"
+        if options.include_domains:
+            body["includeDomains"] = list(options.include_domains)
+        if options.exclude_domains:
+            body["excludeDomains"] = list(options.exclude_domains)
+
+    try:
+        # Request search results without full-page scraping. Firecrawl returns
+        # title/url/description quickly; deep scraping is handled by fetch_url.
+        response = httpx.post(
+            f"{_firecrawl_api_url()}/v2/search",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=body,
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return []
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if isinstance(data, dict):
+        web = data.get("web") or []
+    elif isinstance(data, list):
+        web = data
+    else:
+        web = []
+
+    results: list[dict[str, str]] = []
+    for item in web or []:
+        if not isinstance(item, dict):
+            continue
+        normalized = _normalize_result(
+            {
+                "title": item.get("title"),
+                "url": item.get("url"),
+                "snippet": item.get("markdown") or item.get("content") or item.get("description"),
+            }
+        )
+        if normalized:
+            results.append(normalized)
+        if len(results) >= limit:
             break
     return _dedupe_results(results)
 
@@ -264,8 +408,15 @@ def _firecrawl_search_semaphore() -> threading.Semaphore:
         return _FIRECRAWL_SEARCH_SEM
 
 
-def _search_firecrawl_cli(query: str, max_results: int) -> list[dict[str, str]]:
-    """Search via authenticated Firecrawl cloud CLI. Never raises."""
+def _search_firecrawl_cli(
+    query: str, max_results: int, options: SearchOptions | None = None
+) -> list[dict[str, str]]:
+    """Search via authenticated Firecrawl cloud CLI. Never raises.
+
+    The CLI path is query-only today; options are best-effort appended via
+    query context and ignored for cache-key purposes.
+    """
+    _ = options  # CLI does not expose topic/recency/domain filters yet.
     q = (query or "").strip()
     if not q:
         return []
@@ -353,11 +504,14 @@ def _ddg_text_once(
     max_results: int,
     backend: str | None,
     region: str = "wt-wt",
+    time_range: str | None = None,
 ) -> list[dict[str, Any]]:
     """Run one DDGS.text call; never raises."""
     kwargs: dict[str, Any] = {"max_results": max_results, "region": region}
     if backend:
         kwargs["backend"] = backend
+    if time_range:
+        kwargs["timelimit"] = time_range
 
     def _call(client: Any, call_kwargs: dict[str, Any]) -> list[dict[str, Any]]:
         try:
@@ -367,14 +521,29 @@ def _ddg_text_once(
             slim: dict[str, Any] = {"max_results": max_results}
             if backend:
                 slim["backend"] = backend
+            if time_range:
+                slim["timelimit"] = time_range
             try:
                 return list(client.text(query, **slim) or [])
             except TypeError:
                 try:
-                    return list(client.text(query, max_results=max_results) or [])
+                    if time_range:
+                        return list(
+                            client.text(query, max_results=max_results, timelimit=time_range) or []
+                        )
+                    else:
+                        return list(client.text(query, max_results=max_results) or [])
                 except TypeError:
                     try:
-                        return list(client.text(keywords=query, max_results=max_results) or [])
+                        if time_range:
+                            return list(
+                                client.text(
+                                    keywords=query, max_results=max_results, timelimit=time_range
+                                )
+                                or []
+                            )
+                        else:
+                            return list(client.text(keywords=query, max_results=max_results) or [])
                     except Exception:
                         return []
             except Exception:
@@ -422,6 +591,7 @@ def _backend_attempt(
     fetch_n: int,
     backend: str | None,
     limit: int,
+    time_range: str | None = None,
 ) -> list[dict[str, str]]:
     raw = _ddg_text_once(
         ddgs_cls,
@@ -429,17 +599,40 @@ def _backend_attempt(
         max_results=fetch_n,
         backend=backend,
         region="wt-wt",
+        time_range=time_range,
     )
     return _collect_normalized(raw, limit)
 
 
-def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> list[dict[str, str]]:
+def _recency_to_ddg_time_range(options: SearchOptions | None) -> str | None:
+    if options is None or not options.recency_days:
+        return None
+    days = max(1, int(options.recency_days))
+    if days <= 1:
+        return "d"
+    if days <= 7:
+        return "w"
+    if days <= 30:
+        return "m"
+    return "y"
+
+
+def _search_ddg(
+    query: str,
+    max_results: int,
+    options: SearchOptions | None = None,
+    *,
+    single_wave: bool = False,
+) -> list[dict[str, str]]:
     """Search via ``ddgs`` (preferred) or legacy ``duckduckgo_search``.
 
     Tries multiple backends in parallel (small pool), retries once on empty,
     de-dupes by URL. Never raises. Bounded by wave/attempt timeouts so a hung
     backend cannot stall a research cell forever. ``single_wave`` limits the
     probe to one backend wave (used when the failure breaker is half-open).
+
+    Best-effort time-range filtering is applied when ``options.recency_days``
+    is set and the backend accepts ``timelimit``.
     """
     ddgs_cls = _import_ddgs_class()
     if ddgs_cls is None:
@@ -452,8 +645,9 @@ def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> l
     backends = list(_DDGS_BACKENDS) if is_modern else list(_LEGACY_BACKENDS) + [None]
 
     limit = max(1, int(max_results or 5))
-    # Over-fetch slightly so de-dupe still fills the limit.
+    # Over-fetch slightly so de-dupes still fills the limit.
     fetch_n = max(limit, min(limit * 2, 10))
+    time_range = _recency_to_ddg_time_range(options)
 
     def _run_backends(backend_list: list[str | None]) -> list[dict[str, str]]:
         if not backend_list:
@@ -471,6 +665,7 @@ def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> l
                     fetch_n=fetch_n,
                     backend=backend,
                     limit=limit,
+                    time_range=time_range,
                 ): backend
                 for backend in backend_list
             }
@@ -509,17 +704,36 @@ def _search_ddg(query: str, max_results: int, *, single_wave: bool = False) -> l
     return []
 
 
-def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
+def _search_backend() -> str:
+    """Return configured search backend (auto/tavily/firecrawl/firecrawl_cli/ddg)."""
+    from langgraph_graph.meta_legal._env import env_choice
+
+    return env_choice(
+        "META_LEGAL_SEARCH_BACKEND",
+        "auto",
+        {"auto", "tavily", "firecrawl", "firecrawl_cli", "ddg"},
+    )
+
+
+def web_search(
+    query: str, max_results: int = 5, *, options: SearchOptions | None = None
+) -> list[dict[str, str]]:
     """Search the web and return ``[{title, url, snippet}, ...]``.
 
-    Provider order:
+    Provider order in ``auto`` mode:
       1. Tavily when ``TAVILY_API_KEY`` is set
       2. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
-      3. ddgs / duckduckgo_search if importable (only when Firecrawl CLI absent)
+      3. ddgs / duckduckgo_search as the offline/dev fallback
 
-    When the Firecrawl CLI is available it is authoritative: empty CLI results
-    do **not** fall through to DDG (avoids multi-engine socket stampedes under
-    full-grid concurrency). DDG remains the offline/dev fallback.
+    Set ``META_LEGAL_SEARCH_BACKEND`` to ``tavily``, ``firecrawl``,
+    ``firecrawl_cli``, or ``ddg`` to force a single backend for benchmarking.
+    ``firecrawl`` uses the Firecrawl v2 API (cloud or self-hosted) first and
+    falls back to the CLI if the API returns nothing.
+
+    Firecrawl is treated as authoritative when configured: empty Firecrawl API
+    results do **not** fall through to later backends. This avoids multi-engine
+    socket stampedes under full-grid concurrency while still allowing Tavily to
+    serve as a fast first probe. DDG remains the offline/dev fallback.
 
     Identical queries are served from an in-process cache within the process.
     A process-wide circuit breaker short-circuits to ``[]`` for a cooldown
@@ -532,7 +746,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
         return []
     limit = max(1, int(max_results or 5))
 
-    cached = _cache_get(q, limit)
+    cached = _cache_get(q, limit, options)
     if cached is not None:
         return cached[:limit]
 
@@ -540,24 +754,44 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     if breaker == "open":
         return []
 
-    try:
-        if os.getenv("TAVILY_API_KEY"):
-            hits = _search_tavily(q, limit)
-            if hits:
-                out = hits[:limit]
-                _cache_put(q, limit, out)
-                _breaker_record(True)
-                return out
-        if _firecrawl_cli_available():
-            hits = _search_firecrawl_cli(q, limit)
-            out = (hits or [])[:limit]
-            _cache_put(q, limit, out)
+    def _wrap_result(probe: Any) -> list[dict[str, str]]:
+        try:
+            out = (probe(q, limit, options) or [])[:limit]
+            _cache_put(q, limit, out, options)
             _breaker_record(bool(out))
             return out
-        out = _search_ddg(q, limit, single_wave=breaker == "half_open")[:limit]
-        # Cache empty results too to avoid hammering dead backends for same query.
-        _cache_put(q, limit, out)
-        _breaker_record(bool(out))
-        return out
+        except Exception:
+            return []
+
+    backend = _search_backend()
+    try:
+        if backend == "tavily" and os.getenv("TAVILY_API_KEY"):
+            return _wrap_result(_search_tavily)
+        if backend == "firecrawl" and os.getenv("FIRECRAWL_API_KEY"):
+            out = _wrap_result(_search_firecrawl_api)
+            if out or not _firecrawl_cli_available():
+                return out
+            return _wrap_result(_search_firecrawl_cli)
+        if backend == "firecrawl_cli" and _firecrawl_cli_available():
+            return _wrap_result(_search_firecrawl_cli)
+        if backend == "ddg":
+            return _wrap_result(_search_ddg)
+
+        # auto
+        if os.getenv("TAVILY_API_KEY"):
+            return _wrap_result(_search_tavily)
+        if _firecrawl_cli_available():
+            # CLI is authoritative: empty results do not stampede DDG.
+            return _wrap_result(_search_firecrawl_cli)
+
+        def _ddg_auto(
+            query: str, n: int, opts: SearchOptions | None = None
+        ) -> list[dict[str, str]]:
+            single_wave = breaker == "half_open"
+            if opts is not None:
+                return _search_ddg(query, n, opts, single_wave=single_wave)
+            return _search_ddg(query, n, single_wave=single_wave)
+
+        return _wrap_result(_ddg_auto)
     except Exception:
         return []
