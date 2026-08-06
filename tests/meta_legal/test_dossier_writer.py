@@ -295,7 +295,6 @@ def test_unwritable_root_surfaces_clear_error(
     blocked = tmp_path / "blocked"
     blocked.mkdir()
     blocked.chmod(0o500)
-    nested = blocked / "nope"
     # On some systems mkdir under 0500 still fails for non-owner; force file-as-root case.
     file_root = tmp_path / "not-a-dir"
     file_root.write_text("x", encoding="utf-8")

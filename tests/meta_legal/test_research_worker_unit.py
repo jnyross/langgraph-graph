@@ -74,7 +74,8 @@ def test_run_research_cell_happy_path_returns_draft() -> None:
                 "Regulation (EU) 2016/679 (GDPR) lays down rules relating to the protection "
                 "of natural persons with regard to the processing of personal data and rules "
                 "relating to the free movement of personal data. It applies to online platforms "
-                "established in the Union and to offering of services to data subjects in the Union."
+                "established in the Union and to offering of services to data subjects "
+                "in the Union."
             )[:max_chars]
         return ""
 
@@ -87,9 +88,9 @@ def test_run_research_cell_happy_path_returns_draft() -> None:
               "citation": "Regulation (EU) 2016/679",
               "source_url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
               "source_type": "primary",
-              "excerpt": "rules relating to the protection of natural persons with regard to the processing of personal data",
+              "excerpt": "rules for protection of natural persons' personal data",
               "meta_nexus": "platform_obligation",
-              "meta_nexus_rationale": "Meta processes EU user data as a platform controller/processor.",
+              "meta_nexus_rationale": "Meta processes EU user data as a platform controller.",
               "language": "en",
               "effective_date": "2018-05-25",
               "status": "in_force",
@@ -117,7 +118,9 @@ def test_run_research_cell_happy_path_returns_draft() -> None:
     assert draft.jurisdiction_id == "european_union"
     assert draft.domain_id == "privacy"
     assert draft.worker_model
-    assert llm.calls or any(getattr(d, "worker_model", "") == "seed_harvest" for d in result["drafts"])
+    assert llm.calls or any(
+        getattr(d, "worker_model", "") == "seed_harvest" for d in result["drafts"]
+    )
 
 
 def test_research_cell_accepts_flat_send_payload_dict() -> None:
@@ -315,7 +318,7 @@ def test_partial_fetch_failure_still_yields_drafts() -> None:
               "citation": "UK Public General Acts 2023 c. 50",
               "source_url": "https://www.legislation.gov.uk/ukpga/2023/50/contents",
               "source_type": "primary",
-              "excerpt": "duties on providers of regulated user-to-user services to protect children",
+              "excerpt": "duties on providers of regulated U2U services to protect children",
               "meta_nexus": "platform_obligation",
               "meta_nexus_rationale": "Meta operates U2U services used by UK children.",
               "confidence": 0.88

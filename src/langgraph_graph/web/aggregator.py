@@ -285,10 +285,7 @@ def build_matrix(
         if not cid:
             jid = str(law.get("jurisdiction_id") or "").strip()
             did = str(law.get("domain_id") or "").strip()
-            if jid and did:
-                cid = f"{jid}::{did}"
-            else:
-                cid = "unknown::unknown"
+            cid = f"{jid}::{did}" if jid and did else "unknown::unknown"
         grouped[cid].append(law)
 
     jurisdictions = sorted(jurisdictions_set)
@@ -449,7 +446,8 @@ def generate_matrix_json(
     from datetime import UTC, datetime
 
     matrix["_generated_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    matrix["_dossier_root"] = str(_dossier_root(dossier_root).resolve()) if _dossier_root(dossier_root).exists() else str(_dossier_root(dossier_root))
+    root = _dossier_root(dossier_root)
+    matrix["_dossier_root"] = str(root.resolve()) if root.exists() else str(root)
 
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -489,7 +487,12 @@ def _cli() -> None:
         # Also print a short summary
         data = json.loads(out.read_text(encoding="utf-8"))
         stats = data.get("stats", {})
-        print(f"  runs={len(data.get('runs', []))} laws={stats.get('total_laws', 0)} cells={stats.get('total_cells', 0)} coverage={stats.get('coverage', 0)}")
+        print(
+            f"  runs={len(data.get('runs', []))} "
+            f"laws={stats.get('total_laws', 0)} "
+            f"cells={stats.get('total_cells', 0)} "
+            f"coverage={stats.get('coverage', 0)}"
+        )
     elif args.print:
         matrix = collect_all_laws(dossier_root=args.dossier_root)
         print(json.dumps(matrix, indent=2, ensure_ascii=False))
