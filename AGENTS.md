@@ -26,7 +26,7 @@ uv run langgraph dev
 # Studio: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
-- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL) and **`meta_legal`** (no-HITL research)
+- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL), **`meta_legal`** (no-HITL research), and **`jurisdiction_catalog`** (no-HITL catalog research)
 - Safari / CORS issues: `uv run langgraph dev --tunnel`
 - Script paths: `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL)
 
@@ -45,7 +45,13 @@ Do not attach a custom checkpointer to either Studio `graph` export.
 ```text
 "agent": "./src/langgraph_graph/graph.py:graph"
 "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph"
+"jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph"
 ```
+
+The jurisdiction catalog graph writes research runs under
+`data/jurisdictions/runs/` and must not overwrite the live
+`meta_operating_catalog.json` unless promotion is explicitly requested and
+there are no uncertain verification blockers.
 
 ### `meta_legal` (no HITL)
 

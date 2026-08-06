@@ -10,6 +10,12 @@
 - **IDs:** stable slugs compatible with `langgraph_graph.meta_legal.models.slugify`. `georgia_us` is the U.S. state (country remains `georgia`).
 - **Not derived from** `data/dossiers/**`.
 
+`jurisdiction_catalog_seed.json` is the committed deterministic candidate
+universe. It includes ISO-style country coverage and curated supranational,
+US, Canadian, German, Australian, and selected city/subnational entries.
+Research runs discover and verify additions, then write `runs/<run_id>/`;
+they never overwrite the live catalog by default.
+
 ## Loader
 
 ```python
