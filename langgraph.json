@@ -3,7 +3,8 @@
   "dependencies": ["."],
   "graphs": {
     "agent": "./src/langgraph_graph/graph.py:graph",
-    "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph"
+    "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph",
+    "jurisdiction": "./src/langgraph_graph/jurisdiction/graph.py:graph"
   },
   "env": ".env",
   "python_version": "3.12"

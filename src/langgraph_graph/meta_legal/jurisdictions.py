@@ -18,6 +18,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from langgraph_graph.meta_legal.models import normalize_jurisdiction
+
 # repo root: src/langgraph_graph/meta_legal/jurisdictions.py → parents[3]
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_RELATIVE = Path("data/jurisdictions/meta_operating_catalog.json")
@@ -186,3 +188,74 @@ def catalog_product_size(
             path=path,
         )
     )
+
+
+def resolve_jurisdiction_names(
+    names: Sequence[str],
+    *,
+    catalog: Mapping[str, Any] | None = None,
+    levels: Sequence[str] | Iterable[str] | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Resolve requested jurisdiction labels against the catalog.
+
+    Accepts display names, ids, and the aliases handled by
+    :func:`~langgraph_graph.meta_legal.models.normalize_jurisdiction`.
+
+    Parameters
+    ----------
+    names:
+        Raw requested jurisdiction labels.
+    catalog:
+        Pre-loaded catalog. Loaded from disk when omitted.
+    levels:
+        Optional level filter applied to the catalog before matching.
+
+    Returns
+    -------
+    tuple
+        ``(resolved_entries, unresolved_labels)``. Resolved entries are the
+        catalog dicts, deduplicated by id, in first-match order.
+    """
+    doc = catalog if catalog is not None else load_catalog()
+    items = doc.get("jurisdictions") or []
+
+    allowed: set[str] | None = None
+    if levels is not None:
+        allowed = {str(level).strip() for level in levels if str(level).strip()}
+
+    by_name: dict[str, dict[str, Any]] = {}
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        if allowed is not None and str(item.get("level") or "") not in allowed:
+            continue
+        jid = str(item.get("id") or "").strip()
+        name = str(item.get("name") or "").strip()
+        if not jid or not name:
+            continue
+        entry = dict(item)
+        by_name[name.casefold()] = entry
+        by_id[jid.casefold()] = entry
+
+    resolved: list[dict[str, Any]] = []
+    unresolved: list[str] = []
+    seen_ids: set[str] = set()
+    for raw in names:
+        label = str(raw).strip()
+        if not label:
+            continue
+        canonical = normalize_jurisdiction(label)
+        key = canonical.casefold()
+        match = by_name.get(key) or by_id.get(key)
+        if match is None:
+            # Allow a raw name/id match for inputs aliases did not touch.
+            match = by_name.get(label.casefold()) or by_id.get(label.casefold())
+        if match is None:
+            unresolved.append(label)
+            continue
+        eid = str(match.get("id") or "")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            resolved.append(match)
+    return resolved, unresolved
