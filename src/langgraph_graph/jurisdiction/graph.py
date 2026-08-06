@@ -53,8 +53,10 @@ def ingest_input(state: JurisdictionState) -> dict[str, Any]:
             seen.add(key)
             requested.append(label)
 
-    strict = state.get("strict", True)
-    if not isinstance(strict, bool):
+    strict = state.get("strict")
+    if strict is None:
+        strict = True
+    elif not isinstance(strict, bool):
         strict = bool(strict)
 
     return {
