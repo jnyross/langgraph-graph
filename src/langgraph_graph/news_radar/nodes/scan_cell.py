@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -23,6 +24,17 @@ from langgraph_graph.news_radar.state import RadarState
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "scan.md"
 _DEFAULT_WORKER_MODEL = "~deepseek/deepseek-v4-flash-latest"
+
+
+def _resolve_worker_model(state_model: str | None) -> str:
+    """Respect env model overrides; state is highest precedence."""
+    return (
+        state_model
+        or os.getenv("OPENROUTER_MODEL")
+        or os.getenv("DEEPSEEK_MODEL")
+        or os.getenv("META_LEGAL_WORKER_MODEL")
+        or _DEFAULT_WORKER_MODEL
+    )
 
 # Domain-specific natural-language search tokens for event-first queries.
 _DOMAIN_TOKENS: dict[str, str] = {
@@ -327,7 +339,7 @@ def scan_cell(state: RadarState) -> dict:
         }
 
     lookback_days = state.get("lookback_days", 14)
-    worker_model = cast(str, state.get("worker_model") or _DEFAULT_WORKER_MODEL)
+    worker_model = _resolve_worker_model(cast(str | None, state.get("worker_model")))
 
     try:
         _, context = _gather_context(cell, lookback_days, max_urls=6)

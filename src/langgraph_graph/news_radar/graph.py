@@ -26,6 +26,8 @@ def _aggregate_signals(state: RadarState) -> dict:
 
 def fanout_cells(state: RadarState) -> list[Send] | str:
     """Map each watch cell onto a parallel scan_cell invocation."""
+    if state.get("error"):
+        return "write_radar"
     cells = state.get("cells", [])
     if not cells:
         return "write_radar"

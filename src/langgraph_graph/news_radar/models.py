@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import re
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -72,10 +74,18 @@ class WatchCell(BaseModel):
     level: str | None = None
 
 
+def _stable_signal_id(jurisdiction_id: str, domain_id: str, source_url: str, title: str) -> str:
+    """Deterministic id so the same story is recognized across runs."""
+    url = (source_url or "").strip().lower().split("#")[0]
+    normalized_title = re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
+    text = f"{jurisdiction_id or ''}|{domain_id or ''}|{url}|{normalized_title}"
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
 class SignalDraft(BaseModel):
     """A forward-looking signal extracted from news/trade/law-firm sources."""
 
-    signal_id: str = Field(default_factory=lambda: str(uuid4()))
+    signal_id: str = ""
     title: str
     jurisdiction_id: str
     domain_id: str
@@ -114,6 +124,13 @@ class SignalDraft(BaseModel):
             raise ValueError("title is required")
         return v.strip()
 
+    @model_validator(mode="after")
+    def _set_stable_signal_id(self) -> SignalDraft:
+        self.signal_id = _stable_signal_id(
+            self.jurisdiction_id, self.domain_id, self.source_url, self.title
+        )
+        return self
+
 
 class SignalRecord(SignalDraft):
     """A signal that has passed validation."""
@@ -135,6 +152,7 @@ class SignalCluster(BaseModel):
     cluster_id: str = Field(default_factory=lambda: str(uuid4()))
     title: str
     event_type: str = "other"
+    jurisdiction_id: str = ""
     domain_id: str = ""
     signal_ids: list[str] = Field(default_factory=list)
     signals: list[SignalRecord] = Field(default_factory=list)

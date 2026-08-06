@@ -29,7 +29,7 @@ def _load_dossier_index(dossier_run_id: str | None) -> dict[str, Any] | None:
             return data
 
     # Find the most recently created index in the dossier root.
-    candidates: list[tuple[float, Path, dict[str, Any]]] = []
+    candidates: list[tuple[str, Path, dict[str, Any]]] = []
     if _DOSSIER_ROOT.exists():
         for run_dir in _DOSSIER_ROOT.iterdir():
             if run_dir.is_dir():
@@ -38,7 +38,7 @@ def _load_dossier_index(dossier_run_id: str | None) -> dict[str, Any] | None:
                     try:
                         ts = index.get("created_at", "")
                         # Naive string sort is sufficient for ISO-8601.
-                        order = 0.0 if not isinstance(ts, str) else sum(ord(c) for c in ts)
+                        order = str(ts) if isinstance(ts, str) else ""
                         candidates.append((order, run_dir, index))
                     except Exception:
                         pass

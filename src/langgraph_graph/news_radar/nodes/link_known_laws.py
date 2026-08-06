@@ -51,6 +51,8 @@ def _match_signal_to_law(
     for law in known_laws:
         if not law.get("title"):
             continue
+        if law.get("jurisdiction_id") and law["jurisdiction_id"] != signal.jurisdiction_id:
+            continue
         if law.get("domain_id") and law["domain_id"] != signal.domain_id:
             continue
 

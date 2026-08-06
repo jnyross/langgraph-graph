@@ -64,6 +64,8 @@ def cluster_signals(state: RadarState) -> dict:
         best_match: SignalCluster | None = None
         best_score = 0.0
         for cluster in clusters:
+            if sig.jurisdiction_id and sig.jurisdiction_id != cluster.jurisdiction_id:
+                continue
             if sig.domain_id and sig.domain_id != cluster.domain_id:
                 continue
             cluster_tokens = _title_tokens(cluster.title)
@@ -86,6 +88,7 @@ def cluster_signals(state: RadarState) -> dict:
                 SignalCluster(
                     title=sig.title,
                     event_type=sig.event_type,
+                    jurisdiction_id=sig.jurisdiction_id,
                     domain_id=sig.domain_id,
                     signal_ids=[sig.signal_id],
                     signals=[sig],
