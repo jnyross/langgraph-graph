@@ -28,6 +28,10 @@ def _evidence_mentions_candidate(candidate: Candidate, evidence: Evidence) -> bo
         candidate.name.lower(),
         candidate.id.replace("_", " ").lower(),
     }
+    if "," in candidate.name:
+        aliases.add(candidate.name.split(",", 1)[0].strip().lower())
+    if candidate.id == "iran_islamic_republic_of":
+        aliases.update({"iran", "islamic republic of iran"})
     if candidate.id == "united_states":
         aliases.update({"united states", "usa", "u.s.", "us"})
     return any(alias in haystack for alias in aliases if alias)
@@ -60,15 +64,36 @@ def verify_jurisdiction(state: CatalogState) -> dict[str, Any]:
     evidence: list[Evidence] = []
     errors: list[str] = []
     try:
-        queries = (
-            f"{candidate.name} Facebook Instagram WhatsApp availability blocked access residents",
-            f"{candidate.name} data protection regulator platform privacy law competition "
-            "youth safety intellectual property accessibility",
-        )
+        queries = [
+            (
+                f'"{candidate.name}" Facebook Instagram WhatsApp availability '
+                "blocked access residents"
+            ),
+            (
+                f'"{candidate.name}" data protection regulator platform privacy law '
+                "competition youth safety intellectual property accessibility"
+            ),
+            f'"{candidate.name}" Meta jurisdiction',
+        ]
         seen_urls: set[str] = set()
-        for query in queries:
-            results = web_search(query, max_results=3)
-            for result in results[:3]:
+        for query in queries[:2]:
+            results = web_search(query, max_results=8)
+            for result in results[:8]:
+                url = result.get("url", "")
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                text = fetch_url(url, max_chars=2500) if url else ""
+                candidate_evidence = Evidence(
+                    url=url,
+                    title=result.get("title", ""),
+                    snippet=(text or result.get("snippet", ""))[:500],
+                )
+                if _evidence_mentions_candidate(candidate, candidate_evidence):
+                    evidence.append(candidate_evidence)
+        if not evidence:
+            results = web_search(queries[2], max_results=8)
+            for result in results[:8]:
                 url = result.get("url", "")
                 if url in seen_urls:
                     continue
@@ -108,10 +133,12 @@ def verify_jurisdiction(state: CatalogState) -> dict[str, Any]:
         verdict: Verdict
         if assessment.services_available and assessment.authority_exists:
             verdict = "include" if assessment.verdict == "include" else "uncertain"
-        elif not assessment.services_available:
+        elif (
+            assessment.verdict == "exclude" and assessment.confidence >= 0.75 and len(evidence) >= 2
+        ):
             verdict = "exclude"
         else:
-            verdict = "exclude"
+            verdict = "uncertain"
     except Exception as exc:
         errors.append(f"llm verification failed: {exc}")
         assessment = None

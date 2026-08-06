@@ -104,7 +104,7 @@ def test_offline_graph_writes_round_trippable_catalog(tmp_path, monkeypatch) -> 
                 "confidence": 0.9,
                 "rationale": "no authority",
             },
-            "exclude",
+            "uncertain",
         ),
         (
             {
@@ -225,6 +225,45 @@ def test_verification_keeps_only_relevant_mixed_evidence(
     assert verification.verdict == "include"
     assert len(verification.evidence) == 1
     assert "japan" in verification.evidence[0].url
+
+
+def test_verification_requires_strong_evidence_before_exclusion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.verify_jurisdiction"
+    )
+
+    class Structured:
+        def invoke(self, messages):
+            return Assessment(
+                services_available=False,
+                authority_exists=True,
+                verdict="exclude",
+                confidence=0.9,
+                rationale="direct blocking evidence",
+            )
+
+    class LLM:
+        def with_structured_output(self, schema):
+            return Structured()
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(
+        module,
+        "web_search",
+        lambda query, max_results: [
+            {"url": "https://example.test/iran-one", "title": "Iran blocking", "snippet": ""},
+            {"url": "https://example.test/iran-two", "title": "Iran restrictions", "snippet": ""},
+        ],
+    )
+    monkeypatch.setattr(module, "fetch_url", lambda url, max_chars: "Iran direct blocking evidence")
+    monkeypatch.setattr(module, "get_llm", lambda: LLM())
+    candidate = Candidate(id="iran", name="Iran", level="country")
+    result = module.verify_jurisdiction({"candidate": candidate})
+    assert result["verifications"][0].verdict == "exclude"
 
 
 def test_validation_binds_each_candidate_in_multi_candidate_fan_in() -> None:

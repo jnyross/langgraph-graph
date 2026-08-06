@@ -18,7 +18,10 @@ Make two independent judgments:
    competition, youth safety, intellectual property, or accessibility?
 
 Set `verdict` to `include` only when both judgments are true. Set it to
-`exclude` when reliable evidence shows either judgment is false. Otherwise set
-it to `uncertain`. Explain both judgments and cite the supplied evidence in the
-rationale. A country, state, province, territory, city, or supranational body
-must not be included merely because Meta services are available there.
+`exclude` only when at least two supplied sources directly support a blocking
+or no-authority conclusion for this named jurisdiction, and confidence is
+high. Otherwise set it to `uncertain`; absence of supporting evidence is not
+evidence for exclusion. Explain both judgments and cite the supplied evidence
+in the rationale. A country, state, province, territory, city, or
+supranational body must not be included merely because Meta services are
+available there.
