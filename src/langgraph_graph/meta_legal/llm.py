@@ -14,7 +14,7 @@ DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # Currently resolves to deepseek/deepseek-v4-flash-0731.
 DEFAULT_MODEL = "~deepseek/deepseek-v4-flash-latest"
 # Bound hung TLS reads so a stuck cell cannot pin the whole grid.
-DEFAULT_REQUEST_TIMEOUT_S = 60.0
+DEFAULT_REQUEST_TIMEOUT_S = 30.0
 DEFAULT_MAX_RETRIES = 1
 
 
@@ -26,7 +26,7 @@ def get_llm(model: str | None = None, **kwargs: Any):
         api_key: OPENROUTER_API_KEY, falling back to OPENAI_API_KEY
         base_url: OPENROUTER_BASE_URL or ``https://openrouter.ai/api/v1``
         temperature: 0
-        request_timeout: META_LEGAL_LLM_TIMEOUT_S or 60s
+        request_timeout: META_LEGAL_LLM_TIMEOUT_S or 30s
         max_retries: META_LEGAL_LLM_MAX_RETRIES or 1
     """
     from langchain_openai import ChatOpenAI

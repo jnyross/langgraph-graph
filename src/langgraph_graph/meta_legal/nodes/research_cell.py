@@ -1651,7 +1651,7 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
 def _llm_timeout_s() -> float:
     from langgraph_graph.meta_legal._env import env_float
 
-    return env_float("META_LEGAL_LLM_TIMEOUT_S", 60.0, minimum=5.0)
+    return env_float("META_LEGAL_LLM_TIMEOUT_S", 30.0, minimum=5.0)
 
 
 def _call_llm(
@@ -1806,7 +1806,7 @@ def _invoke_llm_for_drafts(
     """Extract drafts via structured output → JSON mode → text parse, with one empty retry.
 
     Never raises; empty list on total failure (caller records cell_errors).
-    Honours a single wall-clock budget (``META_LEGAL_LLM_TIMEOUT_S``, default 60s)
+    Honours a single wall-clock budget (``META_LEGAL_LLM_TIMEOUT_S``, default 30s)
     across all attempts so multi-path fallback cannot stack timeouts.
     """
     messages = _build_extract_messages(cell, context, retry=False)
