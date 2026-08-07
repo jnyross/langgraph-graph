@@ -41,10 +41,11 @@ def _llm():
 
 
 def _user_request(state: AgentState) -> str:
-    """Resolve the user request from `input` or the latest chat message."""
-    if state.input.strip():
-        return state.input
-    return request_text_from_messages(state.messages)
+    """Resolve the user request from the latest chat message or `input` fallback."""
+    request = request_text_from_messages(state.messages)
+    if request:
+        return request
+    return state.input.strip()
 
 
 def plan_node(state: AgentState) -> dict[str, Any]:

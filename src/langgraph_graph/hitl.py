@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypedDict
 
-
 DecisionType = Literal["approve", "edit", "reject"]
 
 
@@ -139,18 +138,39 @@ def resolve_hitl_decision(
     return False, default_tool, default_args, "Action rejected by human; nothing executed."
 
 
+def _content_to_text(content: Any) -> str:
+    """Normalize Agent Chat UI / LangChain message content into plain text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts: list[str] = []
+        for block in content:
+            if isinstance(block, dict):
+                block_type = block.get("type")
+                text = block.get("text")
+            else:
+                block_type = getattr(block, "type", None)
+                text = getattr(block, "text", None)
+            if block_type == "text" and isinstance(text, str):
+                texts.append(text)
+        return " ".join(texts)
+    if content:
+        return str(content)
+    return ""
+
+
 def request_text_from_messages(messages: list[Any], fallback: str = "") -> str:
     """Best-effort user text from OpenAI-style message dicts (Agent Chat UI input)."""
     for message in reversed(messages or []):
         if isinstance(message, dict):
             role = message.get("role") or message.get("type")
-            content = message.get("content")
-            if role in {"user", "human"} and content:
-                return str(content)
+            text = _content_to_text(message.get("content"))
+            if role in {"user", "human"} and text:
+                return text
         else:
             # LangChain message objects, if they slip through.
             role = getattr(message, "type", None) or getattr(message, "role", None)
-            content = getattr(message, "content", None)
-            if role in {"human", "user"} and content:
-                return str(content)
+            text = _content_to_text(getattr(message, "content", None))
+            if role in {"human", "user"} and text:
+                return text
     return fallback

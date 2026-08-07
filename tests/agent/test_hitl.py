@@ -63,9 +63,7 @@ def test_build_hitl_request_matches_agent_chat_ui_schema() -> None:
         (False, False, "send_message", {"to": "me"}),
     ],
 )
-def test_resolve_hitl_decision(
-    resume: Any, granted: bool, tool: str, args: dict[str, Any]
-) -> None:
+def test_resolve_hitl_decision(resume: Any, granted: bool, tool: str, args: dict[str, Any]) -> None:
     ok, name, resolved_args, _msg = resolve_hitl_decision(
         resume,
         default_tool="send_message",
@@ -82,6 +80,24 @@ def test_request_text_from_messages() -> None:
             [
                 {"role": "assistant", "content": "hi"},
                 {"role": "user", "content": "do the thing"},
+            ]
+        )
+        == "do the thing"
+    )
+
+
+def test_request_text_from_agent_chat_ui_blocks() -> None:
+    assert (
+        request_text_from_messages(
+            [
+                {"role": "assistant", "content": "hi"},
+                {
+                    "type": "human",
+                    "content": [
+                        {"type": "text", "text": "do"},
+                        {"type": "text", "text": "the thing"},
+                    ],
+                },
             ]
         )
         == "do the thing"
@@ -142,3 +158,41 @@ def test_act_node_reject_skips_tool() -> None:
 
     assert final["approvals"].get("act-1") is False
     assert final["output"] == "Not now"
+
+
+def test_follow_up_messages_override_persisted_input() -> None:
+    from langgraph_graph.graph import build_graph
+
+    fake_llm = MagicMock()
+
+    def invoke(prompt: str) -> MagicMock:
+        if "Second request" in prompt:
+            return MagicMock(content="second plan")
+        if "First request" in prompt:
+            return MagicMock(content="first plan")
+        raise AssertionError(f"Unexpected prompt: {prompt}")
+
+    fake_llm.invoke.side_effect = invoke
+
+    with patch("langgraph_graph.graph._llm", return_value=fake_llm):
+        graph = build_graph()
+        config = {"configurable": {"thread_id": "hitl-test-3"}}
+        graph.invoke(
+            {
+                "messages": [{"role": "user", "content": "First request"}],
+            },
+            config=config,
+        )
+        graph.invoke(
+            Command(resume={"decisions": [{"type": "approve"}]}),
+            config=config,
+        )
+        result = graph.invoke(
+            {
+                "messages": [{"role": "user", "content": "Second request"}],
+            },
+            config=config,
+        )
+
+    payload = result["__interrupt__"][0].value
+    assert payload["action_requests"][0]["args"]["body"] == "second plan"
