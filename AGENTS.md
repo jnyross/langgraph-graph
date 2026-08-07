@@ -131,13 +131,15 @@ Dependencies are refreshed automatically on VM startup by the update script
 `export PATH="$HOME/.local/bin:$PATH"` first. Standard lint/test/run commands
 live above and in the README — prefer those. Non-obvious caveats:
 
-- **No LLM API keys are provisioned by default.** There is no
-  `OPENROUTER_API_KEY`, so live `meta_legal` / `jurisdiction_catalog` /
-  `news_radar` research workers produce no findings (the planner + dossier
-  path still runs). The `agent` graph's `plan_node` calls an OpenAI-compatible
-  endpoint; the default `BASE_URL` (Ollama at `localhost:11434`) is not running
-  here. To exercise the `agent` graph end-to-end, point `MODEL` / `BASE_URL` /
-  `API_KEY` at any reachable OpenAI-compatible endpoint.
+- **LLM / search secrets (injected at runtime, never written to `.env`):**
+  use `OPENROUTER_API_KEY` + `FIRECRAWL_API_KEY`. Preferred model is the
+  rolling alias `OPENROUTER_MODEL=~deepseek/deepseek-v4-flash-latest` (also set
+  as `MODEL` / `BASE_URL=https://openrouter.ai/api/v1` for the `agent` graph).
+  Leave `META_LEGAL_SEARCH_BACKEND=auto` / `META_LEGAL_FETCH_BACKEND=auto` so
+  Firecrawl is preferred when the key is present, with DuckDuckGo as fallback.
+  Without `OPENROUTER_API_KEY`, research workers produce no findings (planner +
+  dossier path still runs). If OpenRouter rejects the rolling alias, pin
+  `OPENROUTER_MODEL=deepseek/deepseek-v4-flash-0731`.
 - **`AgentState.messages` must be OpenAI-style dicts** (`{"role", "content"}`),
   not LangChain `Message` objects. Invoking the `agent` graph with
   `HumanMessage(...)` (as `examples/hitl_basic.py` does) raises a pydantic
