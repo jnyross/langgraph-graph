@@ -140,23 +140,32 @@ def resolve_hitl_decision(
 
 def _content_to_text(content: Any) -> str:
     """Normalize Agent Chat UI / LangChain message content into plain text."""
+    if content is None:
+        return ""
     if isinstance(content, str):
-        return content
+        return content.strip()
     if isinstance(content, list):
         texts: list[str] = []
         for block in content:
+            if isinstance(block, str):
+                if block.strip():
+                    texts.append(block.strip())
+                continue
             if isinstance(block, dict):
                 block_type = block.get("type")
                 text = block.get("text")
             else:
                 block_type = getattr(block, "type", None)
                 text = getattr(block, "text", None)
-            if block_type == "text" and isinstance(text, str):
-                texts.append(text)
-        return " ".join(texts)
-    if content:
-        return str(content)
-    return ""
+            if isinstance(text, str) and text.strip():
+                if block_type in {None, "text", "input_text"}:
+                    texts.append(text.strip())
+        return " ".join(texts).strip()
+    # LangChain / SDK content-block objects sometimes appear as a single block.
+    text = getattr(content, "text", None)
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    return str(content).strip()
 
 
 def request_text_from_messages(messages: list[Any], fallback: str = "") -> str:

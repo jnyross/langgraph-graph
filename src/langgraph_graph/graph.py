@@ -58,10 +58,13 @@ def plan_node(state: AgentState) -> dict[str, Any]:
     )
     try:
         raw = str(_llm().invoke(prompt).content)
-    except Exception as exc:
+    except Exception:
         # Keep HITL demos usable when the local model endpoint is down.
-        raw = f"Handle request: {request}\n(note: planner fallback; model unavailable: {exc})"
+        # Keep this user-facing text clean — it surfaces in Agent Chat UI.
+        raw = request or "Handle the user's request"
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
+    if not steps and request:
+        steps = [request]
     messages = list(state.messages)
     if not messages and request:
         messages = [{"role": "user", "content": request}]
