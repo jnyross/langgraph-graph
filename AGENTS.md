@@ -122,3 +122,40 @@ uv run pytest                                 # once tests exist
 - `scripts/` — ops helpers
 - `docs/` — design notes, roadmap, decisions
 - `.agents/skills/` — installed agent skills
+
+## Cursor Cloud specific instructions
+
+Dependencies are refreshed automatically on VM startup by the update script
+(`uv sync --extra dev`). `uv` is preinstalled under `~/.local/bin` and is on
+`PATH` in login shells via `~/.profile`; in a non-login shell run
+`export PATH="$HOME/.local/bin:$PATH"` first. Standard lint/test/run commands
+live above and in the README — prefer those. Non-obvious caveats:
+
+- **LLM / search secrets (injected at runtime, never written to `.env`):**
+  use `OPENROUTER_API_KEY` + `FIRECRAWL_API_KEY`. Preferred model is the
+  rolling alias `OPENROUTER_MODEL=~deepseek/deepseek-v4-flash-latest` (also set
+  as `MODEL` / `BASE_URL=https://openrouter.ai/api/v1` for the `agent` graph).
+  Leave `META_LEGAL_SEARCH_BACKEND=auto` / `META_LEGAL_FETCH_BACKEND=auto` so
+  Firecrawl is preferred when the key is present, with DuckDuckGo as fallback.
+  Without `OPENROUTER_API_KEY`, research workers produce no findings (planner +
+  dossier path still runs). If OpenRouter rejects the rolling alias, pin
+  `OPENROUTER_MODEL=deepseek/deepseek-v4-flash-0731`.
+- **`AgentState.messages` must be OpenAI-style dicts** (`{"role", "content"}`),
+  not LangChain `Message` objects. Invoking the `agent` graph with
+  `HumanMessage(...)` (as `examples/hitl_basic.py` does) raises a pydantic
+  `dict_type` error under the installed `langchain-core`. Pass dict messages
+  when driving the graph directly (e.g. via the dev-server `/runs` API or a
+  script).
+- **Agent HITL resume:** after the run pauses at the `act` node `interrupt()`,
+  resume with `graph.invoke(Command(resume=True), config=cfg)` (approve) to run
+  the bound tool; `resume=False` rejects it.
+- **Law Matrix UI data source.** `python -m langgraph_graph.web.server` builds
+  `/api/matrix` by aggregating `data/dossiers/` (empty by default → empty
+  matrix). The frontend only falls back to the committed
+  `web/data/matrix.json` when `/api/matrix` is unavailable. To view the
+  populated demo matrix, serve the static dir instead:
+  `python -m http.server --directory web 8080`.
+- **Dev server (headless):**
+  `uv run langgraph dev --no-browser --no-reload --port 2024`; health check
+  `curl http://127.0.0.1:2024/ok` → `{"ok":true}`. Graphs are listed via
+  `POST /assistants/search`, executed via `/runs` (not `/graphs`).
