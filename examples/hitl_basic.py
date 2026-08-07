@@ -3,7 +3,7 @@
 Demonstrates the core loop:
   1. Start a thread.
   2. Hit the `interrupt()` in the `act` node.
-  3. Resume with an approval decision.
+  3. Resume with an Agent Chat UI–compatible decision payload.
   4. Print the final output.
 
 This needs an OpenAI-compatible endpoint running (Ollama by default).
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 
-from langchain_core.messages import HumanMessage
+from langgraph.types import Command
 
 from langgraph_graph import build_graph
 
@@ -34,30 +34,35 @@ def main() -> None:
     request = "Remind me to review the agentic graphs research tomorrow."
 
     print("→ Starting run…")
-    state = graph.invoke({"input": request, "messages": [HumanMessage(content=request)]}, config=config)
+    # Agent Chat UI / Agent Server expect OpenAI-style message dicts.
+    state = graph.invoke(
+        {"input": request, "messages": [{"role": "user", "content": request}]},
+        config=config,
+    )
 
-    # The graph paused at the interrupt. Inspect it.
-    while state.get("pending_action") is None and "__interrupt__" in _next_interrupt(graph, config):
-        print("\n⏸  Interrupted for approval. Inspecting action…")
-        print("   ", graph.get_state(config))
+    interrupts = state.get("__interrupt__") if isinstance(state, dict) else None
+    if interrupts:
+        print("\n⏸  Interrupted for approval.")
+        print("   payload:", getattr(interrupts[0], "value", interrupts[0]))
         decision = _ask_human()
         print(f"→ Resuming with decision={decision}")
-        state = graph.invoke(None, config=config)
+        state = graph.invoke(
+            Command(resume={"decisions": [decision]}),
+            config=config,
+        )
 
     print("\n✅ Done. Final output:")
-    print(state.get("output", "(empty)"))
+    if isinstance(state, dict):
+        print(state.get("output", "(empty)"))
+    else:
+        print(state)
 
 
-def _next_interrupt(graph, config) -> tuple:
-    try:
-        return graph.get_state(config).next
-    except Exception:
-        return ()
-
-
-def _ask_human() -> bool:
+def _ask_human() -> dict:
     answer = input("Approve action? [y/N]: ").strip().lower()
-    return answer in {"y", "yes"}
+    if answer in {"y", "yes"}:
+        return {"type": "approve"}
+    return {"type": "reject", "message": "Rejected from CLI demo."}
 
 
 if __name__ == "__main__":

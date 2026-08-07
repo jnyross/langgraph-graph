@@ -11,7 +11,7 @@ A personal-automation runtime for **AI agentic graphs** built on [LangGraph](htt
 - HITL checkpoints before any external side effect (send / spend / prod write / PII export).
 - Local-first: Ollama / MLX models via OpenAI-compatible endpoints; optional LiteLLM for multi-provider.
 - Reproducible runs via LangGraph checkpointer (SQLite now, Postgres later).
-- Local development and debugging primarily through **LangSmith Studio** (`langgraph dev`).
+- Local development through **Agent Chat UI** for HITL approvals, with **LangSmith Studio** (`langgraph dev`) as an optional debug surface.
 
 ## Prerequisites
 
@@ -19,20 +19,30 @@ A personal-automation runtime for **AI agentic graphs** built on [LangGraph](htt
 - **[uv](https://docs.astral.sh/uv/)**
 - A free **[LangSmith](https://smith.langchain.com/)** account (optional; needed for traces and the hosted Studio UI)
 
-## Quick start (LangSmith Studio)
+## Quick start (HITL UI)
+
+Primary human-in-the-loop surface is **Agent Chat UI** (vendored under
+`apps/agent-chat-ui`).
 
 ```bash
 uv sync --extra dev
 cp .env.example .env   # add LANGSMITH_API_KEY if you want traces
-uv run langgraph dev
+
+# Terminal 1 — Agent Server
+uv run langgraph dev --no-browser
+
+# Terminal 2 — Agent Chat UI (approve / edit / reject interrupts)
+./scripts/run_agent_chat_ui.sh --install
 ```
 
 Then open:
 
 - **API:** http://127.0.0.1:2024
-- **Studio:** https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+- **Agent Chat UI:** http://localhost:3000  
+  (Deployment URL `http://localhost:2024`, graph / assistant id **`agent`**)
+- **Studio (optional):** https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 
-The Studio graph id is **`agent`** (see `langgraph.json` → `graphs.agent`).
+The graph id is **`agent`** (see `langgraph.json` → `graphs.agent`). Details: `docs/hitl.md`, `apps/agent-chat-ui/LOCAL.md`.
 
 ### Safari / cross-origin note
 

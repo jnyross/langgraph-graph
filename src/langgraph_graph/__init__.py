@@ -7,7 +7,14 @@ Public API:
 """
 
 from langgraph_graph.graph import build_graph, graph
+from langgraph_graph.hitl import build_hitl_request, resolve_hitl_decision
 from langgraph_graph.state import AgentState
 
-__all__ = ["AgentState", "build_graph", "graph"]
+__all__ = [
+    "AgentState",
+    "build_graph",
+    "build_hitl_request",
+    "graph",
+    "resolve_hitl_decision",
+]
 __version__ = "0.1.0"

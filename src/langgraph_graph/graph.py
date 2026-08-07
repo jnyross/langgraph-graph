@@ -6,7 +6,9 @@ Nodes:
     reply  — summarise for the user
 
 The `act` node uses LangGraph's `interrupt()` to pause for human approval before
-any tool with an external side effect runs. This is the project's HITL policy.
+any tool with an external side effect runs. The interrupt payload uses the
+Agent Chat UI / Agent Inbox HITLRequest schema so Studio and the chat UI both
+render approve / edit / reject controls.
 """
 
 from __future__ import annotations
@@ -18,6 +20,11 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from langgraph_graph.hitl import (
+    build_hitl_request,
+    request_text_from_messages,
+    resolve_hitl_decision,
+)
 from langgraph_graph.state import AgentState
 from langgraph_graph.tools import ALL_TOOLS
 
@@ -33,53 +40,75 @@ def _llm():
     )
 
 
+def _user_request(state: AgentState) -> str:
+    """Resolve the user request from `input` or the latest chat message."""
+    if state.input.strip():
+        return state.input
+    return request_text_from_messages(state.messages)
+
+
 def plan_node(state: AgentState) -> dict[str, Any]:
     """Produce a short plan from the user's input."""
     llm = _llm()
+    request = _user_request(state)
     prompt = (
         "Break this request into 1-3 concise steps. "
         "Return plain lines, no numbering.\n\n"
-        f"Request: {state.input}"
+        f"Request: {request}"
     )
     raw = llm.invoke(prompt).content
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
+    messages = state.messages
+    if not messages and request:
+        messages = [{"role": "user", "content": request}]
     return {
+        "input": request,
         "plan": steps,
-        "messages": state.messages + [{"role": "assistant", "content": str(raw)}],
+        "messages": messages + [{"role": "assistant", "content": str(raw)}],
     }
 
 
 def act_node(state: AgentState) -> dict[str, Any]:
     """Propose an action and pause for human approval before executing it.
 
-    The first time we reach this node for a given action, we set
-    `pending_action` and `interrupt()`. LangGraph resumes here with the human's
-    decision; approved actions execute the bound tool, rejected ones are skipped.
+    Interrupt payload matches Agent Chat UI's HITLRequest schema. On resume,
+    Agent Chat UI sends ``{"decisions": [{"type": "approve"|"edit"|"reject", ...}]}``.
+    Boolean resume values remain supported for CLI / Studio convenience.
     """
-    plan_summary = "; ".join(state.plan) or state.input
-    action: dict[str, Any] = {
-        "id": "act-1",
-        "tool": "send_message",
-        "args": {"to": "me", "body": plan_summary},
-    }
+    plan_summary = "; ".join(state.plan) or _user_request(state)
+    tool_name = "send_message"
+    tool_args: dict[str, Any] = {"to": "me", "body": plan_summary}
+    action_id = "act-1"
 
-    # interrupt() returns whatever the human supplies at resume time.
-    decision = interrupt(
-        {
-            "prompt": "Approve this action?",
-            "action": action,
-        }
+    hitl_request = build_hitl_request(
+        tool_name=tool_name,
+        tool_args=tool_args,
+        description=(
+            "Approve this external side effect before it runs.\n\n"
+            f"Tool: {tool_name}\n"
+            f"Args: {tool_args}"
+        ),
+        allowed_decisions=["approve", "edit", "reject"],
     )
 
-    granted = bool(decision) if decision is not None else False
-    approvals: dict[str, bool] = {**state.approvals, action["id"]: granted}
+    # interrupt() returns whatever the human supplies at resume time.
+    decision = interrupt(hitl_request)
+
+    granted, resolved_tool, resolved_args, reject_message = resolve_hitl_decision(
+        decision,
+        default_tool=tool_name,
+        default_args=tool_args,
+    )
+    approvals: dict[str, bool] = {**state.approvals, action_id: granted}
     output = ""
     if granted:
-        tool = next((t for t in ALL_TOOLS if t.name == action["tool"]), None)
+        tool = next((t for t in ALL_TOOLS if t.name == resolved_tool), None)
         if tool is not None:
-            output = tool.invoke(action["args"])  # type: ignore[arg-type]
+            output = tool.invoke(resolved_args)  # type: ignore[arg-type]
+        else:
+            output = f"Unknown tool {resolved_tool!r}; nothing executed."
     else:
-        output = "Action rejected by human; nothing executed."
+        output = reject_message or "Action rejected by human; nothing executed."
     return {"approvals": approvals, "pending_action": None, "output": output}
 
 
