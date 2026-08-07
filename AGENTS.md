@@ -21,12 +21,15 @@ Primary local path is **LangSmith Studio** via the LangGraph CLI:
 ```bash
 uv sync --extra dev
 cp .env.example .env   # optional LANGSMITH_API_KEY for traces; never commit .env
-uv run langgraph dev
+uv run langgraph dev --no-browser
 # API: http://127.0.0.1:2024
-# Studio: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+./scripts/run_agent_chat_ui.sh --install
+# Agent Chat UI: http://localhost:3000  (graph id: agent)
+# Optional Studio: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
 - Graph ids in Studio / `langgraph.json`: **`agent`** (HITL), **`meta_legal`** (no-HITL research), **`jurisdiction_catalog`** (no-HITL catalog research), and **`news_radar`** (no-HITL forward-signal intelligence)
+- HITL UI: Agent Chat UI under `apps/agent-chat-ui` (see `docs/hitl.md`)
 - Safari / CORS issues: `uv run langgraph dev --tunnel`
 - Script paths: `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL) · `uv run python examples/news_radar_smoke.py` (no-HITL)
 
@@ -108,7 +111,8 @@ A human approval interrupt is required before any of:
 
 ```bash
 uv sync --extra dev
-uv run langgraph dev                          # preferred — Studio (select agent or meta_legal)
+uv run langgraph dev --no-browser             # Agent Server (API :2024)
+./scripts/run_agent_chat_ui.sh                # Agent Chat UI HITL (:3000)
 uv run python examples/hitl_basic.py          # CLI HITL demo
 uv run python examples/meta_legal_smoke.py    # CLI meta_legal smoke (OpenRouter)
 uv run pytest                                 # once tests exist
@@ -118,8 +122,9 @@ uv run pytest                                 # once tests exist
 
 - `langgraph.json` — Studio / `langgraph dev` entries (`graphs.agent`, `graphs.meta_legal`)
 - `src/langgraph_graph/` — package: state schemas, graph builder, tools, HITL helpers
+- `apps/agent-chat-ui/` — Agent Chat UI for HITL approve / edit / reject
 - `examples/` — runnable demos
-- `scripts/` — ops helpers
+- `scripts/` — ops helpers (`run_agent_chat_ui.sh`, `run.py`, …)
 - `docs/` — design notes, roadmap, decisions
 - `.agents/skills/` — installed agent skills
 
@@ -146,9 +151,12 @@ live above and in the README — prefer those. Non-obvious caveats:
   `dict_type` error under the installed `langchain-core`. Pass dict messages
   when driving the graph directly (e.g. via the dev-server `/runs` API or a
   script).
-- **Agent HITL resume:** after the run pauses at the `act` node `interrupt()`,
-  resume with `graph.invoke(Command(resume=True), config=cfg)` (approve) to run
-  the bound tool; `resume=False` rejects it.
+- **Agent HITL interrupt / resume:** `act` interrupts with an Agent Chat UI
+  HITLRequest (`action_requests` + `review_configs`). Resume with
+  `graph.invoke(Command(resume={"decisions": [{"type": "approve"}]}), config=cfg)`
+  (or `reject` / `edit`). Legacy boolean `resume=True|False` still works.
+  Helpers: `src/langgraph_graph/hitl.py`. UI: `apps/agent-chat-ui` via
+  `./scripts/run_agent_chat_ui.sh`.
 - **Law Matrix UI data source.** `python -m langgraph_graph.web.server` builds
   `/api/matrix` by aggregating `data/dossiers/` (empty by default → empty
   matrix). The frontend only falls back to the committed

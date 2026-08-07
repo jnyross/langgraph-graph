@@ -45,6 +45,13 @@ Thumbs.db
 .idea/
 *.swp
 
+# Node / Agent Chat UI
+node_modules/
+.next/
+apps/agent-chat-ui/.env
+apps/agent-chat-ui/.next/
+apps/agent-chat-ui/node_modules/
+
 
 # Meta legal dossiers and jurisdiction runs
 data/dossiers/*
