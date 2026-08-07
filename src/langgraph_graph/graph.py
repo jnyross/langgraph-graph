@@ -50,16 +50,19 @@ def _user_request(state: AgentState) -> str:
 
 def plan_node(state: AgentState) -> dict[str, Any]:
     """Produce a short plan from the user's input."""
-    llm = _llm()
     request = _user_request(state)
     prompt = (
         "Break this request into 1-3 concise steps. "
         "Return plain lines, no numbering.\n\n"
         f"Request: {request}"
     )
-    raw = llm.invoke(prompt).content
+    try:
+        raw = str(_llm().invoke(prompt).content)
+    except Exception as exc:
+        # Keep HITL demos usable when the local model endpoint is down.
+        raw = f"Handle request: {request}\n(note: planner fallback; model unavailable: {exc})"
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
-    messages = state.messages
+    messages = list(state.messages)
     if not messages and request:
         messages = [{"role": "user", "content": request}]
     return {

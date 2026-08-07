@@ -84,6 +84,17 @@ def test_request_text_from_messages() -> None:
         )
         == "do the thing"
     )
+    assert (
+        request_text_from_messages(
+            [
+                {
+                    "type": "human",
+                    "content": [{"type": "text", "text": "Remind me to buy milk"}],
+                }
+            ]
+        )
+        == "Remind me to buy milk"
+    )
 
 
 def test_request_text_from_agent_chat_ui_blocks() -> None:
