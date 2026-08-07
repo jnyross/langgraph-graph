@@ -64,6 +64,7 @@ def plan_node(state: AgentState) -> dict[str, Any]:
         raw = request or "Handle the user's request"
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
     if not steps and request:
+        raw = request
         steps = [request]
     messages = list(state.messages)
     if not messages and request:
