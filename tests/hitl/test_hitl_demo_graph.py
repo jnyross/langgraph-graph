@@ -70,6 +70,10 @@ def test_hitl_demo_rerun_clears_stale_output_on_confirm_false() -> None:
     graph.invoke({"input": "demo"}, config=config)
     graph.invoke(Command(resume={"kind": "confirm", "value": True}), config=config)
     graph.invoke(Command(resume={"kind": "choice", "value": "eu"}), config=config)
+    graph.invoke(
+        Command(resume={"kind": "choice", "value": ["privacy", "competition"]}),
+        config=config,
+    )
     graph.invoke(Command(resume={"kind": "text", "value": "youth safety"}), config=config)
     final = graph.invoke(
         Command(resume={"kind": "approve", "decision": {"type": "approve"}}),
