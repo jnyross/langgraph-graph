@@ -36,6 +36,20 @@ def test_build_choice_prompt() -> None:
     assert prompt["allow_multiple"] is False
 
 
+def test_build_multi_choice_prompt() -> None:
+    prompt = build_choice_prompt(
+        title="Domains",
+        prompt="Pick many",
+        options=[{"id": "privacy", "label": "Privacy"}],
+        allow_multiple=True,
+    )
+    assert prompt["allow_multiple"] is True
+    assert resolve_choice({"kind": "choice", "value": ["privacy", "ip"]}) == [
+        "privacy",
+        "ip",
+    ]
+
+
 def test_build_text_prompt() -> None:
     prompt = build_text_prompt(title="Note", prompt="Add detail", placeholder="…")
     assert prompt["kind"] == "text"

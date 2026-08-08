@@ -4,10 +4,12 @@ A zero-build frontend for LangGraph human-in-the-loop interrupts. Open it in a
 Codex / local browser, start (or attach) a thread, and answer prompts:
 
 - **confirm** — yes / no
-- **choice** — pick one (or many) options
+- **choice** — pick one option (radio), or many when `allow_multiple` is true (checkboxes)
 - **text** — free-text input
 - **approve** — approve / edit / reject a proposed action  
   (also understands Agent Inbox `{action_requests, review_configs}` for graph id `agent`)
+
+The `hitl_demo` graph exercises all of these, including a multi-select domains step.
 
 ## Quick start
 

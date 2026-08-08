@@ -17,8 +17,16 @@ def test_hitl_demo_happy_path() -> None:
 
     state = graph.invoke(Command(resume={"kind": "confirm", "value": True}), config=config)
     assert state["__interrupt__"][0].value["kind"] == "choice"
+    assert state["__interrupt__"][0].value.get("allow_multiple") is False
 
     state = graph.invoke(Command(resume={"kind": "choice", "value": "eu"}), config=config)
+    assert state["__interrupt__"][0].value["kind"] == "choice"
+    assert state["__interrupt__"][0].value.get("allow_multiple") is True
+
+    state = graph.invoke(
+        Command(resume={"kind": "choice", "value": ["privacy", "competition"]}),
+        config=config,
+    )
     assert state["__interrupt__"][0].value["kind"] == "text"
 
     state = graph.invoke(
@@ -34,8 +42,10 @@ def test_hitl_demo_happy_path() -> None:
     assert "__interrupt__" not in final
     assert final["answers"]["confirm"] is True
     assert final["answers"]["choice"] == "eu"
+    assert final["answers"]["multi_choice"] == ["privacy", "competition"]
     assert final["answers"]["text"] == "youth safety"
     assert final["answers"]["approve"]["granted"] is True
+    assert "domains=privacy,competition" in final["answers"]["approve"]["args"]["body"]
     assert "HITL demo complete" in final["output"]
 
 

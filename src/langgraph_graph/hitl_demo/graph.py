@@ -1,4 +1,4 @@
-"""Deterministic HITL demo: confirm → choice → text → approve.
+"""Deterministic HITL demo: confirm → choice → multi-choice → text → approve.
 
 No LLM calls. Designed for the minimal HITL UI (`apps/hitl-ui`) and Codex
 browser workflows. Studio / ``langgraph dev`` export is the module-level
@@ -30,7 +30,10 @@ def ask_confirm(state: HitlDemoState) -> dict[str, Any]:
     """Ask the human to confirm they want to continue the demo."""
     prompt = build_confirm_prompt(
         title="Continue demo?",
-        prompt="This run walks through confirm, choice, free text, and approve.",
+        prompt=(
+            "This run walks through confirm, single choice, multi-select, "
+            "free text, and approve."
+        ),
         yes_label="Continue",
         no_label="Stop",
     )
@@ -63,6 +66,31 @@ def ask_choice(state: HitlDemoState) -> dict[str, Any]:
     return {"answers": answers}
 
 
+def ask_multi_choice(state: HitlDemoState) -> dict[str, Any]:
+    """Multi-select checkboxes (allow_multiple=True)."""
+    if not state.answers.get("confirm"):
+        return {}
+
+    prompt = build_choice_prompt(
+        title="Pick domains",
+        prompt="Select one or more legal domains to include.",
+        options=[
+            {"id": "privacy", "label": "Privacy"},
+            {"id": "competition", "label": "Competition"},
+            {"id": "youth_safety", "label": "Youth safety"},
+            {"id": "ip", "label": "IP"},
+            {"id": "accessibility", "label": "Accessibility"},
+        ],
+        allow_multiple=True,
+    )
+    resume = interrupt(prompt)
+    selected = resolve_choice(resume)
+    if isinstance(selected, str):
+        selected = [selected]
+    answers = {**state.answers, "multi_choice": selected}
+    return {"answers": answers}
+
+
 def ask_text(state: HitlDemoState) -> dict[str, Any]:
     if not state.answers.get("confirm"):
         return {}
@@ -84,11 +112,16 @@ def ask_approve(state: HitlDemoState) -> dict[str, Any]:
         return {}
 
     region = state.answers.get("choice", "unknown")
+    domains = state.answers.get("multi_choice") or []
+    if isinstance(domains, list):
+        domains_label = ",".join(str(d) for d in domains) or "(none)"
+    else:
+        domains_label = str(domains)
     note = state.answers.get("text") or "(no note)"
     tool_name = "send_message"
     tool_args: dict[str, Any] = {
         "to": "demo",
-        "body": f"Region={region}; note={note}",
+        "body": f"Region={region}; domains={domains_label}; note={note}",
     }
     prompt = build_approve_prompt(
         title="Approve side effect",
@@ -131,6 +164,7 @@ def summarize(state: HitlDemoState) -> dict[str, Any]:
         "HITL demo complete.",
         f"confirm: {state.answers.get('confirm')}",
         f"choice: {state.answers.get('choice')}",
+        f"multi_choice: {state.answers.get('multi_choice')}",
         f"text: {state.answers.get('text')}",
         f"approve: {status}",
     ]
@@ -152,6 +186,7 @@ def _assemble_graph() -> StateGraph:
     g = StateGraph(HitlDemoState)
     g.add_node("ask_confirm", ask_confirm)
     g.add_node("ask_choice", ask_choice)
+    g.add_node("ask_multi_choice", ask_multi_choice)
     g.add_node("ask_text", ask_text)
     g.add_node("ask_approve", ask_approve)
     g.add_node("summarize", summarize)
@@ -162,7 +197,8 @@ def _assemble_graph() -> StateGraph:
         _route_after_confirm,
         {"ask_choice": "ask_choice", "summarize": "summarize"},
     )
-    g.add_edge("ask_choice", "ask_text")
+    g.add_edge("ask_choice", "ask_multi_choice")
+    g.add_edge("ask_multi_choice", "ask_text")
     g.add_edge("ask_text", "ask_approve")
     g.add_edge("ask_approve", "summarize")
     g.add_edge("summarize", END)

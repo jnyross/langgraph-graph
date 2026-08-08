@@ -1,4 +1,4 @@
-"""Drive hitl_demo through all four HITL prompts without a UI.
+"""Drive hitl_demo through all HITL prompts without a UI.
 
 Usage::
 
@@ -24,6 +24,7 @@ def main() -> None:
     resumes = [
         {"kind": "confirm", "value": True},
         {"kind": "choice", "value": "eu"},
+        {"kind": "choice", "value": ["privacy", "youth_safety"]},
         {"kind": "text", "value": "youth safety"},
         {
             "kind": "approve",

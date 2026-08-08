@@ -15,8 +15,8 @@ back to a human and resumes only on their input.
 
 ## UI: minimal HITL Control (Codex browser)
 
-Lightweight zero-build UI for common HITL prompts (`confirm`, `choice`, `text`,
-`approve`). Best for Codex chat → open browser → decide.
+Lightweight zero-build UI for common HITL prompts (`confirm`, `choice` including
+multi-select checkboxes, `text`, `approve`). Best for Codex chat → open browser → decide.
 
 1. Start the Agent Server: `uv run langgraph dev --no-browser`
 2. Start the UI: `./scripts/run_hitl_ui.sh`
