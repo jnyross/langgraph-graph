@@ -13,9 +13,23 @@ back to a human and resumes only on their input.
 | Production write | DB update, file mutate | State change |
 | HR / PII export | exporting personal data | Compliance / privacy |
 
+## UI: minimal HITL Control (Codex browser)
+
+Lightweight zero-build UI for common HITL prompts (`confirm`, `choice` including
+multi-select checkboxes, `text`, `approve`). Best for Codex chat → open browser → decide.
+
+1. Start the Agent Server: `uv run langgraph dev --no-browser`
+2. Start the UI: `./scripts/run_hitl_ui.sh`
+3. Open `http://127.0.0.1:3100/?assistantId=hitl_demo` and click **Start run**
+
+Demo graph id: **`hitl_demo`** (no LLM). The UI also understands Agent Inbox
+payloads from graph id **`agent`**. See `apps/hitl-ui/README.md`.
+
+CLI smoke without a browser: `uv run python examples/hitl_demo_smoke.py`.
+
 ## UI: Agent Chat UI
 
-Primary interactive surface for HITL is **Agent Chat UI**
+Full chat surface for HITL is **Agent Chat UI**
 (`apps/agent-chat-ui`, upstream [langchain-ai/agent-chat-ui](https://github.com/langchain-ai/agent-chat-ui)).
 
 1. Start the Agent Server: `uv run langgraph dev`
@@ -59,6 +73,24 @@ Command(resume={"decisions": [{"type": "approve"}]})
 Legacy boolean `Command(resume=True|False)` still works for CLI convenience.
 
 Helpers live in `src/langgraph_graph/hitl.py`.
+
+## Tagged HITLPrompt (minimal UI / `hitl_demo`)
+
+```json
+{"kind": "confirm", "title": "Continue?", "prompt": "...", "yes_label": "Yes", "no_label": "No"}
+{"kind": "choice", "title": "Pick", "prompt": "...", "options": [{"id": "eu", "label": "EU"}]}
+{"kind": "text", "title": "Note", "prompt": "...", "placeholder": "", "multiline": true}
+{"kind": "approve", "title": "Send?", "prompt": "...", "action": {"name": "send_message", "args": {}}, "allowed_decisions": ["approve", "edit", "reject"]}
+```
+
+Resume values:
+
+```python
+Command(resume={"kind": "confirm", "value": True})
+Command(resume={"kind": "choice", "value": "eu"})
+Command(resume={"kind": "text", "value": "youth safety"})
+Command(resume={"kind": "approve", "decision": {"type": "approve"}})
+```
 
 ## Relaxation
 

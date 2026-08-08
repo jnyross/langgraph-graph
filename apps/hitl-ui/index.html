@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HITL Control</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <p class="brand">HITL Control</p>
+        <p class="lede">Pause LangGraph runs and answer human-in-the-loop prompts.</p>
+      </header>
+
+      <section class="panel" aria-label="Connection">
+        <div class="row">
+          <label>
+            Assistant
+            <input id="assistantId" type="text" value="hitl_demo" autocomplete="off" />
+          </label>
+          <label>
+            Thread
+            <input id="threadId" type="text" placeholder="auto on Start" autocomplete="off" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="startBtn" type="button">Start run</button>
+          <button id="attachBtn" type="button" class="secondary">Attach thread</button>
+        </div>
+        <p id="status" class="status" role="status">Idle.</p>
+      </section>
+
+      <section id="promptPanel" class="panel prompt-panel" hidden aria-label="Pending prompt">
+        <h1 id="promptTitle"></h1>
+        <p id="promptBody" class="prompt-body"></p>
+        <div id="promptControls"></div>
+      </section>
+
+      <section class="panel" aria-label="Run log">
+        <h2>Log</h2>
+        <pre id="log" class="log"></pre>
+        <pre id="output" class="output" hidden></pre>
+      </section>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
