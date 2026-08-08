@@ -118,8 +118,7 @@ def ask_approve(state: HitlDemoState) -> dict[str, Any]:
 def summarize(state: HitlDemoState) -> dict[str, Any]:
     """Produce a short final summary for the UI."""
     if not state.answers.get("confirm"):
-        output = state.output or "Demo stopped at confirm."
-        return {"output": output}
+        return {"output": "Demo stopped at confirm."}
 
     approve = state.answers.get("approve") or {}
     if approve.get("granted"):

@@ -25,6 +25,7 @@ if (params.get("threadId")) {
 }
 
 let busy = false;
+let currentPrompt = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -84,9 +85,10 @@ function isAgentInbox(value) {
   );
 }
 
-function hidePrompt() {
+function hidePrompt({ clear = true } = {}) {
   promptPanel.hidden = true;
   promptControls.innerHTML = "";
+  if (clear) currentPrompt = null;
 }
 
 function showPrompt(title, body) {
@@ -115,7 +117,7 @@ async function resumeWith(resume) {
   const threadId = threadInput.value.trim();
   if (!threadId) throw new Error("Missing thread id");
   setBusy(true);
-  hidePrompt();
+  hidePrompt({ clear: false });
   setStatus("Resuming…");
   log(`resume ${JSON.stringify(resume)}`);
   try {
@@ -130,6 +132,7 @@ async function resumeWith(resume) {
   } catch (err) {
     setStatus(String(err.message || err));
     log(`error: ${err.message || err}`);
+    if (currentPrompt) renderPrompt(currentPrompt);
   } finally {
     setBusy(false);
   }
@@ -309,6 +312,7 @@ function renderAgentInbox(prompt) {
 }
 
 function renderPrompt(prompt) {
+  currentPrompt = prompt;
   if (!prompt || typeof prompt !== "object") {
     showPrompt("Interrupt", JSON.stringify(prompt, null, 2));
     actionRow([
