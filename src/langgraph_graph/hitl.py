@@ -320,12 +320,14 @@ def resolve_choice(resume_value: Any) -> str | list[str]:
         value = resume_value["value"]
         if isinstance(value, list):
             return [str(v) for v in value]
-        return str(value)
+        return "" if value is None else str(value)
     if isinstance(resume_value, list):
         return [str(v) for v in resume_value]
     if isinstance(resume_value, str):
         return resume_value
-    raise ValueError(f"Invalid choice resume value: {resume_value!r}")
+    if resume_value is None:
+        return ""
+    return str(resume_value)
 
 
 def resolve_text(resume_value: Any) -> str:

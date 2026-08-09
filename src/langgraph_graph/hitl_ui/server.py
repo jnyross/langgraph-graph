@@ -11,6 +11,7 @@ Environment
 ``HITL_UI_UPSTREAM``       – LangGraph API base (default ``http://127.0.0.1:2024``)
 ``HITL_UI_ROOT``           – override static directory
 ``HITL_UI_ALLOW_REMOTE``   – set to ``1`` to bind a non-loopback address
+``HITL_UI_ALLOWED_HOSTS``  – comma-separated extra allowed ``Host`` header values for remote access
 """
 
 from __future__ import annotations
@@ -59,7 +60,7 @@ def _allowed_host_names(bind_host: str) -> set[str]:
     """Return acceptable Host header hostnames for the UI server."""
     names = {"127.0.0.1", "localhost", "::1"}
     host = bind_host.lower()
-    if host not in names:
+    if host not in names and host not in {"0.0.0.0", "::", ""}:
         names.add(host)
     return names
 
@@ -281,7 +282,10 @@ def main(argv: list[str] | None = None) -> None:
             "Set HITL_UI_ALLOW_REMOTE=1 to override."
         )
 
-    allowed_hosts = None if allow_remote else _allowed_host_names(args.host)
+    allowed_hosts = _allowed_host_names(args.host)
+    extra_hosts = os.environ.get("HITL_UI_ALLOWED_HOSTS")
+    if extra_hosts:
+        allowed_hosts.update(h.strip().lower() for h in extra_hosts.split(",") if h.strip())
     handler = _make_handler(ui_dir, args.upstream, allowed_hosts=allowed_hosts)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"HITL UI → http://{args.host}:{args.port}/?assistantId=hitl_demo")
