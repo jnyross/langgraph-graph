@@ -95,12 +95,18 @@ def test_resolve_choice_single_and_multi() -> None:
     assert resolve_choice({"kind": "choice", "value": "eu"}) == "eu"
     assert resolve_choice({"kind": "choice", "value": ["eu", "us"]}) == ["eu", "us"]
     assert resolve_choice("apac") == "apac"
+    assert resolve_choice({"kind": "confirm", "value": True}) == ""
+    assert resolve_choice({"kind": "approve", "decision": {"type": "reject"}}) == ""
+    assert resolve_choice({"unknown": "dict"}) == ""
 
 
 def test_resolve_text() -> None:
     assert resolve_text({"kind": "text", "value": "hello"}) == "hello"
     assert resolve_text("plain") == "plain"
     assert resolve_text(None) == ""
+    assert resolve_text({"kind": "confirm", "value": "yes"}) == ""
+    assert resolve_text({"kind": "choice", "value": "eu"}) == ""
+    assert resolve_text({"unknown": "dict"}) == ""
 
 
 def test_resolve_approve_tagged_and_legacy() -> None:

@@ -338,11 +338,16 @@ def resolve_confirm(resume_value: Any) -> bool:
 
 def resolve_choice(resume_value: Any) -> str | list[str]:
     """Return the selected option id(s) from a choice resume payload."""
-    if isinstance(resume_value, dict) and "value" in resume_value:
-        value = resume_value["value"]
-        if isinstance(value, list):
-            return [str(v) for v in value]
-        return "" if value is None else str(value)
+    if isinstance(resume_value, dict):
+        kind = resume_value.get("kind")
+        if kind is not None and kind != "choice":
+            return ""
+        if "value" in resume_value:
+            value = resume_value["value"]
+            if isinstance(value, list):
+                return [str(v) for v in value]
+            return "" if value is None else str(value)
+        return ""
     if isinstance(resume_value, list):
         return [str(v) for v in resume_value]
     if isinstance(resume_value, str):
@@ -354,8 +359,13 @@ def resolve_choice(resume_value: Any) -> str | list[str]:
 
 def resolve_text(resume_value: Any) -> str:
     """Return the free-text answer from a text resume payload."""
-    if isinstance(resume_value, dict) and "value" in resume_value:
-        return str(resume_value["value"] if resume_value["value"] is not None else "")
+    if isinstance(resume_value, dict):
+        kind = resume_value.get("kind")
+        if kind is not None and kind != "text":
+            return ""
+        if "value" in resume_value:
+            return "" if resume_value["value"] is None else str(resume_value["value"])
+        return ""
     if isinstance(resume_value, str):
         return resume_value
     if resume_value is None:
