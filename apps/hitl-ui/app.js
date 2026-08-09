@@ -221,12 +221,18 @@ function renderApproveTagged(prompt) {
   const argsGrid = document.createElement("div");
   argsGrid.className = "args-grid";
   const argInputs = {};
+  const stringArgKeys = new Set();
   const args = action.args && typeof action.args === "object" ? action.args : {};
   for (const [key, value] of Object.entries(args)) {
     const label = document.createElement("label");
     label.textContent = key;
     const input = document.createElement("textarea");
-    input.value = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    if (typeof value === "string") {
+      input.value = value;
+      stringArgKeys.add(key);
+    } else {
+      input.value = JSON.stringify(value, null, 2);
+    }
     argInputs[key] = input;
     label.appendChild(input);
     argsGrid.appendChild(label);
@@ -257,10 +263,14 @@ function renderApproveTagged(prompt) {
         const editedArgs = {};
         for (const [key, input] of Object.entries(argInputs)) {
           const raw = input.value;
-          try {
-            editedArgs[key] = JSON.parse(raw);
-          } catch {
+          if (stringArgKeys.has(key)) {
             editedArgs[key] = raw;
+          } else {
+            try {
+              editedArgs[key] = JSON.parse(raw);
+            } catch {
+              editedArgs[key] = raw;
+            }
           }
         }
         resumeWith({
