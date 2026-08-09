@@ -110,8 +110,9 @@ def _first_decision(resume_value: Any) -> Decision | None:
         return {"type": "reject", "message": resume_value}
 
     if isinstance(resume_value, dict):
-        # Tagged approve resume from the minimal HITL UI.
-        if resume_value.get("kind") == "approve":
+        # Tagged resume from the minimal HITL UI.
+        kind = resume_value.get("kind")
+        if kind == "approve":
             nested = resume_value.get("decision")
             if isinstance(nested, dict) and "type" in nested:
                 return cast(Decision, nested)
@@ -120,6 +121,10 @@ def _first_decision(resume_value: Any) -> Decision | None:
                 first = decisions[0]
                 if isinstance(first, dict) and "type" in first:
                     return cast(Decision, first)
+            return None
+        if kind in {"confirm", "choice", "text"}:
+            # Answer for a different prompt kind — never treat it as approval.
+            return None
 
         decisions = resume_value.get("decisions")
         if isinstance(decisions, list) and decisions:

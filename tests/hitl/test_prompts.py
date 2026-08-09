@@ -140,3 +140,14 @@ def test_schema_detectors() -> None:
             "review_configs": [{"action_name": "x", "allowed_decisions": ["approve"]}],
         }
     )
+
+
+def test_resolve_approve_rejects_other_prompt_kinds() -> None:
+    for kind in ("confirm", "choice", "text"):
+        granted, _, _, msg = resolve_approve_prompt(
+            {"kind": kind, "value": True},
+            default_tool="send_message",
+            default_args={},
+        )
+        assert granted is False
+        assert msg == "No decision provided."

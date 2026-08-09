@@ -7,16 +7,19 @@ Usage::
 
 Environment
 -----------
-``HITL_UI_PORT``       – default port (default ``3100``)
-``HITL_UI_UPSTREAM``   – LangGraph API base (default ``http://127.0.0.1:2024``)
-``HITL_UI_ROOT``       – override static directory
+``HITL_UI_PORT``           – default port (default ``3100``)
+``HITL_UI_UPSTREAM``       – LangGraph API base (default ``http://127.0.0.1:2024``)
+``HITL_UI_ROOT``           – override static directory
+``HITL_UI_ALLOW_REMOTE``   – set to ``1`` to bind a non-loopback address
 """
 
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import mimetypes
 import os
+import socket
 import sys
 from http.client import HTTPConnection, HTTPSConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -36,6 +39,20 @@ def _ui_root(explicit: str | Path | None = None) -> Path:
     if env:
         return Path(env)
     return _DEFAULT_UI_ROOT
+
+
+def _is_loopback(host: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        try:
+            infos = socket.getaddrinfo(host, None)
+        except socket.gaierror:
+            return False
+        return all(
+            ipaddress.ip_address(info[4][0]).is_loopback for info in infos
+        )
+    return addr.is_loopback
 
 
 def _make_handler(ui_dir: Path, upstream: str):
@@ -221,6 +238,12 @@ def main(argv: list[str] | None = None) -> None:
     ui_dir = _ui_root(args.ui_root)
     if not ui_dir.is_dir():
         raise SystemExit(f"HITL UI directory not found: {ui_dir}")
+
+    if not _is_loopback(args.host) and os.environ.get("HITL_UI_ALLOW_REMOTE") != "1":
+        raise SystemExit(
+            f"Refusing to bind HITL UI proxy to non-loopback host {args.host!r}. "
+            "Set HITL_UI_ALLOW_REMOTE=1 to override."
+        )
 
     handler = _make_handler(ui_dir, args.upstream)
     server = ThreadingHTTPServer((args.host, args.port), handler)

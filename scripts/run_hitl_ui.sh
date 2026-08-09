@@ -17,4 +17,4 @@ export PATH="${HOME}/.local/bin:${PATH}"
 cd "$ROOT"
 echo "HITL UI → http://127.0.0.1:${HITL_UI_PORT:-3100}/?assistantId=hitl_demo"
 echo "Expecting LangGraph API at ${HITL_UI_UPSTREAM:-http://127.0.0.1:2024}"
-exec uv run python -m langgraph_graph.hitl_ui.server "$@"
+exec uv run python -m langgraph_graph.hitl_ui.server ${1+"$@"}
