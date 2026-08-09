@@ -10,8 +10,6 @@ Environment
 ``HITL_UI_PORT``           – default port (default ``3100``)
 ``HITL_UI_UPSTREAM``       – LangGraph API base (default ``http://127.0.0.1:2024``)
 ``HITL_UI_ROOT``           – override static directory
-``HITL_UI_ALLOW_REMOTE``   – set to ``1`` to bind a non-loopback address
-``HITL_UI_ALLOWED_HOSTS``  – comma-separated extra allowed ``Host`` header values for remote access
 """
 
 from __future__ import annotations
@@ -275,17 +273,13 @@ def main(argv: list[str] | None = None) -> None:
     if not ui_dir.is_dir():
         raise SystemExit(f"HITL UI directory not found: {ui_dir}")
 
-    allow_remote = os.environ.get("HITL_UI_ALLOW_REMOTE") == "1"
-    if not _is_loopback(args.host) and not allow_remote:
+    if not _is_loopback(args.host):
         raise SystemExit(
-            f"Refusing to bind HITL UI proxy to non-loopback host {args.host!r}. "
-            "Set HITL_UI_ALLOW_REMOTE=1 to override."
+            f"HITL UI server can only bind to loopback addresses for security; "
+            f"{args.host!r} is not allowed."
         )
 
     allowed_hosts = _allowed_host_names(args.host)
-    extra_hosts = os.environ.get("HITL_UI_ALLOWED_HOSTS")
-    if extra_hosts:
-        allowed_hosts.update(h.strip().lower() for h in extra_hosts.split(",") if h.strip())
     handler = _make_handler(ui_dir, args.upstream, allowed_hosts=allowed_hosts)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"HITL UI → http://{args.host}:{args.port}/?assistantId=hitl_demo")
