@@ -154,7 +154,7 @@ def resolve_hitl_decision(
         return True, default_tool, default_args, None
 
     if dtype == "edit":
-        edited = decision.get("edited_action") or {}
+        edited = cast(EditedAction, decision.get("edited_action") or {})
         name = str(edited.get("name") or default_tool)
         args = edited.get("args")
         if not isinstance(args, dict):
@@ -285,7 +285,12 @@ def is_agent_inbox_request(value: Any) -> bool:
         return False
     actions = value.get("action_requests")
     configs = value.get("review_configs")
-    return isinstance(actions, list) and bool(actions) and isinstance(configs, list) and bool(configs)
+    return (
+        isinstance(actions, list)
+        and bool(actions)
+        and isinstance(configs, list)
+        and bool(configs)
+    )
 
 
 def resolve_confirm(resume_value: Any) -> bool:
@@ -360,9 +365,12 @@ def _content_to_text(content: Any) -> str:
             else:
                 block_type = getattr(block, "type", None)
                 text = getattr(block, "text", None)
-            if isinstance(text, str) and text.strip():
-                if block_type in {None, "text", "input_text"}:
-                    texts.append(text.strip())
+            if (
+                isinstance(text, str)
+                and text.strip()
+                and block_type in {None, "text", "input_text"}
+            ):
+                texts.append(text.strip())
         return " ".join(texts).strip()
     # LangChain / SDK content-block objects sometimes appear as a single block.
     text = getattr(content, "text", None)

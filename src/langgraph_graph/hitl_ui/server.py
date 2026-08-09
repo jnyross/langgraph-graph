@@ -86,8 +86,19 @@ def _make_handler(ui_dir: Path, upstream: str):
                 return
             self.send_error(405, "PATCH only supported under /lg")
 
+        def _is_allowed_origin(self, origin: str) -> bool:
+            host = self.headers.get("Host")
+            if not host:
+                return False
+            # The UI is served from the same origin as the proxy; only allow that origin.
+            return origin.lower() == f"http://{host}".lower()
+
         def _cors_headers(self) -> None:
-            self.send_header("Access-Control-Allow-Origin", "*")
+            origin = self.headers.get("Origin")
+            if not origin or not self._is_allowed_origin(origin):
+                return
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
             self.send_header(
                 "Access-Control-Allow-Methods",
                 "GET, POST, PUT, PATCH, DELETE, OPTIONS",
@@ -147,6 +158,7 @@ def _make_handler(ui_dir: Path, upstream: str):
                     "content-length",
                     "connection",
                     "transfer-encoding",
+                    "accept-encoding",
                 }
             }
             headers["Host"] = (
@@ -187,7 +199,7 @@ def _make_handler(ui_dir: Path, upstream: str):
                 "content-length",
             }
             for key, value in resp.getheaders():
-                if key.lower() in hop_by_hop:
+                if key.lower().startswith("access-control-") or key.lower() in hop_by_hop:
                     continue
                 self.send_header(key, value)
             self.send_header("Content-Length", str(len(resp_body)))
