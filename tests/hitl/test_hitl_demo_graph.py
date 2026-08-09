@@ -89,6 +89,7 @@ def test_hitl_demo_rerun_clears_stale_output_on_confirm_false() -> None:
         config=config,
     )
     assert stopped["output"] == "Demo stopped at confirm."
+    assert set(stopped["answers"].keys()) == {"confirm"}
 
 
 def test_studio_graph_export_has_no_checkpointer() -> None:

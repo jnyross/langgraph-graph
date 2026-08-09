@@ -39,8 +39,10 @@ def ask_confirm(state: HitlDemoState) -> dict[str, Any]:
     )
     resume = interrupt(prompt)
     confirmed = resolve_confirm(resume)
-    answers = {**state.answers, "confirm": confirmed}
-    return {"answers": answers}
+    return {
+        "answers": {"confirm": confirmed},
+        "output": "",
+    }
 
 
 def ask_choice(state: HitlDemoState) -> dict[str, Any]:
