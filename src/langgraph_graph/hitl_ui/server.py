@@ -19,6 +19,7 @@ import ipaddress
 import json
 import mimetypes
 import os
+import re
 import secrets
 import socket
 import sys
@@ -31,6 +32,20 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_UI_ROOT = _REPO_ROOT / "apps" / "hitl-ui"
 _DEFAULT_PORT = int(os.environ.get("HITL_UI_PORT", "3100"))
 _DEFAULT_UPSTREAM = os.environ.get("HITL_UI_UPSTREAM", "http://127.0.0.1:2024")
+
+# Paths the HITL UI needs to hit on the upstream LangGraph Agent Server.
+_ALLOWED_UPSTREAM_PATHS: list[tuple[str, re.Pattern[str]]] = [
+    ("GET", re.compile(r"^/threads/[^/]+/state$")),
+    ("POST", re.compile(r"^/threads/[^/]+/runs/wait$")),
+    ("POST", re.compile(r"^/threads$")),
+]
+
+
+def _is_allowed_upstream_path(method: str, path: str) -> bool:
+    return any(
+        allowed_method == method and pattern.match(path)
+        for allowed_method, pattern in _ALLOWED_UPSTREAM_PATHS
+    )
 
 
 def _ui_root(explicit: str | Path | None = None) -> Path:
@@ -206,6 +221,10 @@ def _make_handler(
                 upstream_path = "/" + upstream_path
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
+
+            if not _is_allowed_upstream_path(self.command, parsed.path[3:] or "/"):
+                self.send_error(403, "Disallowed upstream path")
+                return
 
             length = int(self.headers.get("Content-Length", "0") or "0")
             body = self.rfile.read(length) if length > 0 else None
