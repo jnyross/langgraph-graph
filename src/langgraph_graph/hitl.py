@@ -307,18 +307,19 @@ def resolve_confirm(resume_value: Any) -> bool:
     if isinstance(resume_value, bool):
         return resume_value
     if isinstance(resume_value, dict):
-        if resume_value.get("kind") == "confirm":
+        kind = resume_value.get("kind")
+        if kind == "confirm":
             value = resume_value.get("value")
             if isinstance(value, str):
                 return value.strip().lower() in {"yes", "y", "true", "1", "confirm", "ok"}
             return bool(value)
-        if "value" in resume_value and isinstance(resume_value["value"], bool):
-            return resume_value["value"]
-        if resume_value.get("kind") in {"choice", "text"}:
+        if kind in {"choice", "text"}:
             return False
         decision = _first_decision(resume_value)
         if decision is not None:
             return str(decision.get("type", "")).lower() in {"approve", "accept", "edit"}
+        if "value" in resume_value and isinstance(resume_value["value"], bool) and kind is None:
+            return resume_value["value"]
         # Unknown dict shape: never assume yes.
         return False
     if isinstance(resume_value, str):
