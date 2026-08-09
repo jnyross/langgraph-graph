@@ -200,17 +200,17 @@ def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = 
             else:
                 conn = HTTPConnection(upstream_host, upstream_port, timeout=300)
 
+            safe_headers = {
+                "content-type",
+                "authorization",
+                "x-api-key",
+                "accept",
+                "accept-language",
+            }
             headers = {
                 key: value
                 for key, value in self.headers.items()
-                if key.lower()
-                not in {
-                    "host",
-                    "content-length",
-                    "connection",
-                    "transfer-encoding",
-                    "accept-encoding",
-                }
+                if key.lower() in safe_headers
             }
             headers["Host"] = (
                 f"{upstream_host}:{upstream_port}"

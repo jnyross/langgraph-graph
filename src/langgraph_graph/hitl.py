@@ -139,7 +139,11 @@ def _first_decision(resume_value: Any) -> Decision | None:
         if isinstance(first, dict) and "type" in first:
             return first  # type: ignore[return-value]
 
-    # Truthy/falsey fallback for unexpected shapes.
+    if isinstance(resume_value, dict):
+        # Unknown dict shape: never assume yes.
+        return None
+
+    # Truthy/falsey fallback for unexpected non-dict shapes.
     return {"type": "approve" if bool(resume_value) else "reject"}
 
 
