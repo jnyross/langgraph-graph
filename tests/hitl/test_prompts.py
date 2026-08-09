@@ -73,6 +73,8 @@ def test_build_approve_prompt() -> None:
     [
         ({"kind": "confirm", "value": True}, True),
         ({"kind": "confirm", "value": False}, False),
+        ({"kind": "text", "value": "no"}, False),
+        ({"decisions": [{"type": "reject"}]}, False),
         (True, True),
         ("yes", True),
         ("no", False),

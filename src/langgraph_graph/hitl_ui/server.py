@@ -55,7 +55,16 @@ def _is_loopback(host: str) -> bool:
     return addr.is_loopback
 
 
-def _make_handler(ui_dir: Path, upstream: str):
+def _allowed_host_names(bind_host: str) -> set[str]:
+    """Return acceptable Host header hostnames for the UI server."""
+    names = {"127.0.0.1", "localhost", "::1"}
+    host = bind_host.lower()
+    if host not in names:
+        names.add(host)
+    return names
+
+
+def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = None):
     upstream_parsed = urlparse(upstream)
     upstream_host = upstream_parsed.hostname or "127.0.0.1"
     upstream_port = upstream_parsed.port or (443 if upstream_parsed.scheme == "https" else 80)
@@ -67,37 +76,63 @@ def _make_handler(ui_dir: Path, upstream: str):
                 f"{self.client_address[0]} - - [{self.log_date_time_string()}] {fmt % args}\n"
             )
 
+        def _check_host(self) -> bool:
+            if allowed_hosts is None:
+                return True
+            host_header = self.headers.get("Host", "")
+            if not host_header:
+                self.send_error(403, "Invalid Host header")
+                return False
+            parsed = urlparse(f"http://{host_header}")
+            hostname = (parsed.hostname or "").lower()
+            if hostname not in allowed_hosts:
+                self.send_error(403, "Invalid Host header")
+                return False
+            return True
+
         def do_OPTIONS(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             self.send_response(204)
             self._cors_headers()
             self.send_header("Content-Length", "0")
             self.end_headers()
 
         def do_GET(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             if self.path.startswith("/lg"):
                 self._proxy()
                 return
             self._serve_static()
 
         def do_POST(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             if self.path.startswith("/lg"):
                 self._proxy()
                 return
             self.send_error(405, "POST only supported under /lg")
 
         def do_PUT(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             if self.path.startswith("/lg"):
                 self._proxy()
                 return
             self.send_error(405, "PUT only supported under /lg")
 
         def do_DELETE(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             if self.path.startswith("/lg"):
                 self._proxy()
                 return
             self.send_error(405, "DELETE only supported under /lg")
 
         def do_PATCH(self) -> None:  # noqa: N802
+            if not self._check_host():
+                return
             if self.path.startswith("/lg"):
                 self._proxy()
                 return
@@ -239,13 +274,15 @@ def main(argv: list[str] | None = None) -> None:
     if not ui_dir.is_dir():
         raise SystemExit(f"HITL UI directory not found: {ui_dir}")
 
-    if not _is_loopback(args.host) and os.environ.get("HITL_UI_ALLOW_REMOTE") != "1":
+    allow_remote = os.environ.get("HITL_UI_ALLOW_REMOTE") == "1"
+    if not _is_loopback(args.host) and not allow_remote:
         raise SystemExit(
             f"Refusing to bind HITL UI proxy to non-loopback host {args.host!r}. "
             "Set HITL_UI_ALLOW_REMOTE=1 to override."
         )
 
-    handler = _make_handler(ui_dir, args.upstream)
+    allowed_hosts = None if allow_remote else _allowed_host_names(args.host)
+    handler = _make_handler(ui_dir, args.upstream, allowed_hosts=allowed_hosts)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"HITL UI → http://{args.host}:{args.port}/?assistantId=hitl_demo")
     print(f"Proxying /lg/* → {args.upstream}")

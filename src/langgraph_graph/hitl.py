@@ -307,6 +307,8 @@ def resolve_confirm(resume_value: Any) -> bool:
             return bool(resume_value.get("value"))
         if "value" in resume_value and isinstance(resume_value["value"], bool):
             return resume_value["value"]
+        # Unknown dict shape (or an answer for another prompt kind): never assume yes.
+        return False
     if isinstance(resume_value, str):
         return resume_value.strip().lower() in {"yes", "y", "true", "1", "confirm", "ok"}
     return bool(resume_value)
