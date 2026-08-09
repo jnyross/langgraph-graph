@@ -26,6 +26,7 @@ if (params.get("threadId")) {
 
 let busy = false;
 let currentPrompt = null;
+const csrfToken = document.querySelector('meta[name="hitl-csrf-token"]')?.content;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -46,7 +47,11 @@ function setBusy(next) {
 async function api(path, options = {}) {
   const res = await fetch(`${apiBase}${path}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "X-HITL-CSRF-Token": csrfToken,
+      ...(options.headers || {}),
+    },
   });
   const text = await res.text();
   let data = null;

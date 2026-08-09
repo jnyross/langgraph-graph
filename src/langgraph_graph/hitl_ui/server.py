@@ -19,6 +19,7 @@ import ipaddress
 import json
 import mimetypes
 import os
+import secrets
 import socket
 import sys
 from http.client import HTTPConnection, HTTPSConnection
@@ -64,7 +65,12 @@ def _allowed_host_names(bind_host: str) -> set[str]:
     return names
 
 
-def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = None):
+def _make_handler(
+    ui_dir: Path,
+    upstream: str,
+    allowed_hosts: set[str] | None = None,
+    csrf_token: str | None = None,
+):
     upstream_parsed = urlparse(upstream)
     upstream_host = upstream_parsed.hostname or "127.0.0.1"
     upstream_port = upstream_parsed.port or (443 if upstream_parsed.scheme == "https" else 80)
@@ -157,7 +163,7 @@ def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = 
             )
             self.send_header(
                 "Access-Control-Allow-Headers",
-                "Content-Type, Authorization, x-api-key",
+                "Content-Type, Authorization, x-api-key, x-hitl-csrf-token",
             )
 
         def _serve_static(self) -> None:
@@ -175,7 +181,10 @@ def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = 
                 self.send_error(404, f"Not found: {rel}")
                 return
             content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-            data = target.read_bytes()
+            raw = target.read_text(encoding="utf-8")
+            if target.name == "index.html" and csrf_token is not None:
+                raw = raw.replace("{{HITL_CSRF_TOKEN}}", csrf_token)
+            data = raw.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
@@ -184,6 +193,12 @@ def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = 
             self.wfile.write(data)
 
         def _proxy(self) -> None:
+            if csrf_token is not None:
+                token_header = self.headers.get("X-HITL-CSRF-Token")
+                if token_header != csrf_token:
+                    self.send_error(403, "Invalid CSRF token")
+                    return
+
             # Strip the /lg prefix: /lg/threads -> /threads
             parsed = urlparse(self.path)
             upstream_path = parsed.path[3:] or "/"
@@ -281,7 +296,13 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     allowed_hosts = _allowed_host_names(args.host)
-    handler = _make_handler(ui_dir, args.upstream, allowed_hosts=allowed_hosts)
+    csrf_token = secrets.token_urlsafe(32)
+    handler = _make_handler(
+        ui_dir,
+        args.upstream,
+        allowed_hosts=allowed_hosts,
+        csrf_token=csrf_token,
+    )
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"HITL UI → http://{args.host}:{args.port}/?assistantId=hitl_demo")
     print(f"Proxying /lg/* → {args.upstream}")

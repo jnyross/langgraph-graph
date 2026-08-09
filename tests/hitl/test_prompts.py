@@ -153,6 +153,14 @@ def test_resolve_approve_tagged_and_legacy() -> None:
     assert granted is False
     assert msg == "No decision provided."
 
+    granted, _, _, msg = resolve_approve_prompt(
+        ["reject"],
+        default_tool="send_message",
+        default_args={"to": "me"},
+    )
+    assert granted is False
+    assert msg == "No decision provided."
+
 
 def test_schema_detectors() -> None:
     assert is_hitl_prompt(build_confirm_prompt(title="t", prompt="p"))
