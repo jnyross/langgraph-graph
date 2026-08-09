@@ -34,9 +34,11 @@ _DEFAULT_PORT = int(os.environ.get("HITL_UI_PORT", "3100"))
 _DEFAULT_UPSTREAM = os.environ.get("HITL_UI_UPSTREAM", "http://127.0.0.1:2024")
 
 # Paths the HITL UI needs to hit on the upstream LangGraph Agent Server.
+# Thread ids are restricted to URL-safe, unreserved characters.
+_THREAD_ID_RE = r"[A-Za-z0-9_.-]+"
 _ALLOWED_UPSTREAM_PATHS: list[tuple[str, re.Pattern[str]]] = [
-    ("GET", re.compile(r"^/threads/[^/]+/state$")),
-    ("POST", re.compile(r"^/threads/[^/]+/runs/wait$")),
+    ("GET", re.compile(rf"^/threads/{_THREAD_ID_RE}/state$")),
+    ("POST", re.compile(rf"^/threads/{_THREAD_ID_RE}/runs/wait$")),
     ("POST", re.compile(r"^/threads$")),
 ]
 
