@@ -45,8 +45,8 @@ function setBusy(next) {
 
 async function api(path, options = {}) {
   const res = await fetch(`${apiBase}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
   });
   const text = await res.text();
   let data = null;

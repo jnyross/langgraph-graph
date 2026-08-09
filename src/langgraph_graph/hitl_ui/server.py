@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import json
 import mimetypes
 import os
 import socket
@@ -224,8 +225,8 @@ def _make_handler(ui_dir: Path, upstream: str, allowed_hosts: set[str] | None = 
                 conn.request(self.command, upstream_path, body=body, headers=headers)
                 resp = conn.getresponse()
                 resp_body = resp.read()
-            except OSError as exc:
-                payload = f'{{"error":"upstream unreachable: {exc}"}}'.encode()
+            except OSError:
+                payload = json.dumps({"error": "upstream unreachable"}).encode()
                 self.send_response(502)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
