@@ -23,21 +23,24 @@ uv sync --extra dev
 cp .env.example .env   # optional LANGSMITH_API_KEY for traces; never commit .env
 uv run langgraph dev --no-browser
 # API: http://127.0.0.1:2024
+./scripts/run_hitl_ui.sh
+# Minimal HITL UI: http://127.0.0.1:3100/?assistantId=hitl_demo
 ./scripts/run_agent_chat_ui.sh --install
 # Agent Chat UI: http://localhost:3000  (graph id: agent)
 # Optional Studio: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
-- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL), **`meta_legal`** (no-HITL research), **`jurisdiction_catalog`** (no-HITL catalog research), and **`news_radar`** (no-HITL forward-signal intelligence)
-- HITL UI: Agent Chat UI under `apps/agent-chat-ui` (see `docs/hitl.md`)
+- Graph ids in Studio / `langgraph.json`: **`agent`** (HITL), **`hitl_demo`** (no-LLM HITL prompt demo), **`meta_legal`** (no-HITL research), **`jurisdiction_catalog`** (no-HITL catalog research), and **`news_radar`** (no-HITL forward-signal intelligence)
+- HITL UI: minimal Control under `apps/hitl-ui` (Codex browser) and Agent Chat UI under `apps/agent-chat-ui` (see `docs/hitl.md`)
 - Safari / CORS issues: `uv run langgraph dev --tunnel`
-- Script paths: `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL) · `uv run python examples/news_radar_smoke.py` (no-HITL)
+- Script paths: `uv run python examples/hitl_demo_smoke.py` (HITL demo) · `uv run python examples/hitl_basic.py` (HITL) · `uv run python examples/meta_legal_smoke.py` (no-HITL) · `uv run python examples/news_radar_smoke.py` (no-HITL)
 
 ## Studio export contract
 
 | Export | Where | Checkpointer |
 |--------|--------|--------------|
 | Module-level **`graph`** | `src/langgraph_graph/graph.py` (`agent`) | **None** — Agent Server injects one for Studio |
+| Module-level **`graph`** | `src/langgraph_graph/hitl_demo/graph.py` (`hitl_demo`) | **None** — same Studio contract |
 | Module-level **`graph`** | `src/langgraph_graph/meta_legal/graph.py` (`meta_legal`) | **None** — same Studio contract |
 | Module-level **`graph`** | `src/langgraph_graph/news_radar/graph.py` (`news_radar`) | **None** — same Studio contract |
 | **`build_graph()`** | same modules | **MemorySaver** (or optional checkpointer arg) for scripts/examples |
@@ -48,6 +51,7 @@ Do not attach a custom checkpointer to either Studio `graph` export.
 
 ```text
 "agent": "./src/langgraph_graph/graph.py:graph"
+"hitl_demo": "./src/langgraph_graph/hitl_demo/graph.py:graph"
 "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph"
 "jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph"
 "news_radar": "./src/langgraph_graph/news_radar/graph.py:graph"
@@ -120,11 +124,12 @@ uv run pytest                                 # once tests exist
 
 ## Layout quick ref
 
-- `langgraph.json` — Studio / `langgraph dev` entries (`graphs.agent`, `graphs.meta_legal`)
+- `langgraph.json` — Studio / `langgraph dev` entries (`graphs.agent`, `graphs.hitl_demo`, `graphs.meta_legal`)
 - `src/langgraph_graph/` — package: state schemas, graph builder, tools, HITL helpers
+- `apps/hitl-ui/` — minimal HITL Control UI (confirm / choice / text / approve)
 - `apps/agent-chat-ui/` — Agent Chat UI for HITL approve / edit / reject
 - `examples/` — runnable demos
-- `scripts/` — ops helpers (`run_agent_chat_ui.sh`, `run.py`, …)
+- `scripts/` — ops helpers (`run_hitl_ui.sh`, `run_agent_chat_ui.sh`, `run.py`, …)
 - `docs/` — design notes, roadmap, decisions
 - `.agents/skills/` — installed agent skills
 

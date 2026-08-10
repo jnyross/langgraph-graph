@@ -6,7 +6,8 @@
     "meta_legal": "./src/langgraph_graph/meta_legal/graph.py:graph",
     "jurisdiction": "./src/langgraph_graph/jurisdiction/graph.py:graph",
     "jurisdiction_catalog": "./src/langgraph_graph/jurisdiction_catalog/graph.py:graph",
-    "news_radar": "./src/langgraph_graph/news_radar/graph.py:graph"
+    "news_radar": "./src/langgraph_graph/news_radar/graph.py:graph",
+    "hitl_demo": "./src/langgraph_graph/hitl_demo/graph.py:graph"
   },
   "env": ".env",
   "python_version": "3.12"
