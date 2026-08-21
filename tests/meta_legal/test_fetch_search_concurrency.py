@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
+import threading
 from typing import Any
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from langgraph_graph.meta_legal.models import ResearchCell
 from langgraph_graph.meta_legal.nodes.research_cell import run_research_cell
@@ -17,6 +21,13 @@ from langgraph_graph.meta_legal.tools.search import (
     reset_search_breaker,
     web_search,
 )
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_provider_env(monkeypatch: Any) -> None:
+    """No test here may depend on exported provider keys or real network."""
+    for key in ("TAVILY_API_KEY", "FIRECRAWL_API_KEY", "OPENROUTER_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
 
 
 class _FakeLLM:
@@ -119,11 +130,12 @@ def test_fetch_url_prefers_html_accept_header() -> None:
 def test_web_search_caches_identical_queries(monkeypatch: Any) -> None:
     clear_search_cache()
     reset_search_breaker()
-    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     calls = {"n": 0}
 
-    def fake_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
+    def fake_backend(
+        query: str, max_results: int, options: Any = None, **_kw: Any
+    ) -> list[dict[str, str]]:
         calls["n"] += 1
         return [
             {
@@ -133,7 +145,11 @@ def test_web_search_caches_identical_queries(monkeypatch: Any) -> None:
             }
         ]
 
-    with patch.object(search_mod, "_search_ddg", side_effect=fake_ddg):
+    # Hermetic under any exported provider keys: whichever backend the auto
+    # chain selects (ddg or Firecrawl REST) hits the same fake.
+    with patch.object(search_mod, "_search_ddg", side_effect=fake_backend), patch.object(
+        search_mod, "_search_firecrawl_api", side_effect=fake_backend
+    ):
         a = web_search("GDPR official text", 5)
         b = web_search("gdpr official text", 5)  # case-normalized cache key
     assert a and b
@@ -150,17 +166,18 @@ def test_backend_timeouts_cut_for_exp007() -> None:
 def test_search_breaker_opens_after_consecutive_empty(monkeypatch: Any) -> None:
     clear_search_cache()
     reset_search_breaker()
-    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
-    monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_N", raising=False)
-    monkeypatch.delenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", raising=False)
     monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     calls = {"n": 0}
 
-    def empty_ddg(query: str, max_results: int, **_kw: Any) -> list[dict[str, str]]:
+    def empty_backend(
+        query: str, max_results: int, options: Any = None, **_kw: Any
+    ) -> list[dict[str, str]]:
         calls["n"] += 1
         return []
 
-    with patch.object(search_mod, "_search_ddg", side_effect=empty_ddg):
+    with patch.object(search_mod, "_search_ddg", side_effect=empty_backend), patch.object(
+        search_mod, "_search_firecrawl_api", side_effect=empty_backend
+    ):
         for i in range(3):
             assert web_search(f"dead query {i}", 5) == []
         assert calls["n"] == 3
@@ -176,20 +193,23 @@ def test_search_breaker_opens_after_consecutive_empty(monkeypatch: Any) -> None:
 def test_search_breaker_half_open_single_wave_then_recovers(monkeypatch: Any) -> None:
     clear_search_cache()
     reset_search_breaker()
-    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     monkeypatch.setattr(search_mod, "_FIRECRAWL_CLI", False)
     # Zero cooldown: tripped breaker is immediately half-open (no sleeping).
     monkeypatch.setenv("META_LEGAL_SEARCH_BREAKER_COOLDOWN_S", "0")
-    seen_waves: list[bool] = []
     hits_next = {"on": False}
+    seen_waves: list[bool] = []
 
-    def ddg(query: str, max_results: int, *, single_wave: bool = False) -> list[dict[str, str]]:
+    def backend(
+        query: str, max_results: int, options: Any = None, *, single_wave: bool = False
+    ) -> list[dict[str, str]]:
         seen_waves.append(single_wave)
         if hits_next["on"]:
             return [{"title": "Hit", "url": "https://example.com/x", "snippet": "s"}]
         return []
 
-    with patch.object(search_mod, "_search_ddg", side_effect=ddg):
+    with patch.object(search_mod, "_search_ddg", side_effect=backend), patch.object(
+        search_mod, "_search_firecrawl_api", side_effect=backend
+    ):
         for i in range(3):
             web_search(f"probe {i}", 5)
         assert seen_waves == [False, False, False]
@@ -271,6 +291,8 @@ def test_search_budget_slow_search_still_emits_harvest_drafts(monkeypatch: Any) 
 
 
 def test_run_research_cell_fetches_urls_concurrently() -> None:
+    """Barrier-gated: serial fetch execution cannot satisfy 2-party rendezvous,
+    so the max_active >= 2 assertion fails if the loop ever serializes."""
     cell = ResearchCell(
         cell_id="testland::privacy",
         jurisdiction="Testland",
@@ -283,6 +305,10 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
     active: list[int] = []
     max_active = {"n": 0}
     lock_state = {"i": 0}
+    lock = threading.Lock()
+    # Two parties must be inside fetch_fn at once; a serial loop cannot
+    # satisfy the rendezvous and the barrier breaks after its timeout.
+    barrier = threading.Barrier(2, timeout=5.0)
 
     def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
         return [
@@ -295,15 +321,17 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
         ]
 
     def fetch_fn(url: str, max_chars: int = 12000) -> str:
-        # Track overlap without sleeps (executor scheduling).
-        lock_state["i"] += 1
-        active.append(lock_state["i"])
-        max_active["n"] = max(max_active["n"], len(active))
-        # Simulate tiny work via thread pool presence: just pop after append window.
+        with lock:
+            lock_state["i"] += 1
+            active.append(lock_state["i"])
+            max_active["n"] = max(max_active["n"], len(active))
         try:
+            with contextlib.suppress(threading.BrokenBarrierError):
+                barrier.wait()  # surfaced below via the max_active assertion
             return f"body for {url}"
         finally:
-            active.pop()
+            with lock:
+                active.pop()
 
     llm = _FakeLLM(
         '{"drafts":[{"title":"Privacy Act","citation":"PA-1",'
@@ -312,7 +340,6 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
         '"meta_nexus":"applies to platforms","notes":""}]}'
     )
 
-    # Patch ThreadPoolExecutor usage is real; ensure multiple URLs fetched.
     result = run_research_cell(
         cell,
         search_fn=search_fn,
@@ -324,6 +351,10 @@ def test_run_research_cell_fetches_urls_concurrently() -> None:
     assert result["drafts"]
     # At least the five search URLs should have been requested (harvest may add more).
     assert lock_state["i"] >= 5
+    # Serial execution proof: at least two fetches must have overlapped.
+    assert max_active["n"] >= 2, (
+        f"fetches never overlapped (max_active={max_active['n']}); execution is serial"
+    )
 
 
 def test_eval_grid_limit_cells_and_max_concurrency_flags() -> None:
@@ -333,3 +364,54 @@ def test_eval_grid_limit_cells_and_max_concurrency_flags() -> None:
     assert args.limit_cells == 3
     assert args.max_concurrency == 12
     assert args.dry_run is True
+
+
+def test_run_research_cell_fetch_budget_cancels_stragglers(monkeypatch: Any) -> None:
+    """Bounded fetch loop: hung fetches cannot pin the cell past the budget;
+    partial results are kept and stragglers cancelled."""
+    import time as _time
+
+    import langgraph_graph.meta_legal.nodes.research_cell as rc_mod
+
+    monkeypatch.setenv("META_LEGAL_FETCH_BUDGET_S", "1")
+    # Disable curated seeds so the main fetch loop is exercised directly.
+    monkeypatch.setattr(rc_mod, "seed_urls_for_cell", lambda cell: [])
+    cell = ResearchCell(
+        cell_id="testland::privacy",
+        jurisdiction="Testland",
+        jurisdiction_id="testland",
+        domain="privacy",
+        domain_id="privacy",
+        subject="Meta",
+        status="researching",
+    )
+
+    def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
+        return [
+            {
+                "title": f"Doc {i}",
+                "url": f"https://slow.laws.example.test/{i}",
+                "snippet": "privacy act",
+            }
+            for i in range(4)
+        ]
+
+    def fetch_fn(url: str, max_chars: int = 12000) -> str:
+        _time.sleep(5)
+        return f"body for {url}"
+
+    llm = _FakeLLM('{"drafts":[]}')
+    started = _time.monotonic()
+    result = run_research_cell(
+        cell,
+        search_fn=search_fn,
+        fetch_fn=fetch_fn,
+        llm=llm,
+        max_urls=4,
+        max_fetch_workers=4,
+    )
+    elapsed = _time.monotonic() - started
+
+    assert elapsed < 5.0, f"cell took {elapsed:.2f}s; fetch budget did not bound the loop"
+    errs = result.get("cell_errors") or []
+    assert any("fetch budget" in e.message for e in errs), f"expected budget error; got {errs}"

@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --extra dev
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      # Offline matrix smoke: scripts/build_matrix.py handles an empty or
+      # missing data/dossiers root gracefully (empty matrix, zero stats), so
+      # this stays green while the dossier catalog is still a .gitkeep stub.
+      - name: Matrix build smoke (offline)
+        run: uv run python scripts/build_matrix.py --print
+
+      - name: Example CLI smoke (offline --help)
+        # --help exits inside argparse before any graph build or LLM call.
+        run: uv run python examples/meta_legal_smoke.py --help
+
+      # Informational only: the repo carries ~119 pre-existing lint
+      # violations; keep ruff non-blocking until that debt is paid down.
+      - name: Ruff (informational)
+        run: uv run ruff check .
+        continue-on-error: true

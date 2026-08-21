@@ -8,6 +8,9 @@ Usage:
   uv run python examples/meta_legal_smoke.py
   uv run python examples/meta_legal_smoke.py \\
       --jurisdictions "European Union" "United States" --domains privacy
+
+Default runs are deterministic-only (seed harvest covers each cell; the LLM
+extraction cascade is skipped). Pass --force-llm to run LLM extraction too.
 """
 
 from __future__ import annotations
@@ -51,11 +54,19 @@ def _parse_args() -> argparse.Namespace:
         default="Meta",
         help='Research subject (default: "Meta")',
     )
+    parser.add_argument(
+        "--force-llm",
+        action="store_true",
+        help="Force LLM extraction even when seed harvest already covers the cell",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    if args.force_llm:
+        # Env is read per-cell at runtime, so set it before the graph is built/invoked.
+        os.environ["META_LEGAL_FORCE_LLM"] = "1"
 
     if not os.getenv("OPENROUTER_API_KEY"):
         print(

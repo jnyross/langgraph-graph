@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import datetime
 
@@ -53,7 +54,10 @@ def _date_or_none(value: str | None) -> str | None:
 
 def cluster_signals(state: RadarState) -> dict:
     """Group accepted signals by title/event similarity across publishers."""
-    signals: list[SignalRecord] = list(state.get("accepted", []))
+    signals: list[SignalRecord] = sorted(
+        state.get("accepted", []),
+        key=lambda s: (s.jurisdiction_id, s.domain_id, s.signal_id),
+    )
     include_rumors = state.get("include_rumors", False)
     threshold = 0.30 if include_rumors else 0.45
 
@@ -96,8 +100,12 @@ def cluster_signals(state: RadarState) -> dict:
                 )
             )
 
-    # Finalize each cluster.
+    # Finalize each cluster with a deterministic id: sha256 over the sorted
+    # member signal_ids joined, truncated to 16 hex chars.
     for cluster in clusters:
+        cluster.cluster_id = hashlib.sha256(
+            "".join(sorted(cluster.signal_ids)).encode("utf-8")
+        ).hexdigest()[:16]
         cluster.publisher_names = sorted({n for n in cluster.publisher_names if n})
         cluster.distinct_publisher_count = len(cluster.publisher_names)
 
@@ -116,5 +124,7 @@ def cluster_signals(state: RadarState) -> dict:
             cluster.status = "confirmed"
         else:
             cluster.status = "corroborated"
+
+    clusters.sort(key=lambda c: c.cluster_id)
 
     return {"clusters": clusters, "signals": signals}

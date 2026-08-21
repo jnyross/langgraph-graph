@@ -27,6 +27,7 @@ from langgraph_graph.meta_legal.models import (
 from langgraph_graph.meta_legal.state import ResearchState
 
 DEFAULT_DOSSIER_ROOT = "data/dossiers"
+MAX_INDEX_DETAIL_ENTRIES = 200
 
 
 def safe_fs_id(value: str) -> str:
@@ -71,6 +72,30 @@ def _as_cell_error(item: CellError | Mapping[str, Any]) -> CellError:
     if isinstance(item, CellError):
         return item
     return CellError.model_validate(item)
+
+
+def _rejected_index_entry(item: RejectedRecord) -> dict[str, Any]:
+    """Compact per-rejection summary for ``index.json``."""
+    record = item.record
+    if isinstance(record, Mapping):
+        law_id = str(record.get("law_id") or "")
+        title = str(record.get("title") or "")
+        record_cell = str(record.get("cell_id") or "")
+    else:
+        law_id = str(getattr(record, "law_id", "") or "")
+        title = str(getattr(record, "title", "") or "")
+        record_cell = str(getattr(record, "cell_id", "") or "")
+    return {
+        "law_id": law_id,
+        "title": title,
+        "reason": item.reason,
+        "cell_id": item.cell_id or record_cell,
+    }
+
+
+def _error_index_entry(item: CellError) -> dict[str, Any]:
+    """Compact per-error summary for ``index.json``."""
+    return {"cell_id": item.cell_id, "message": item.message, "stage": item.stage}
 
 
 def _dump_json(path: Path, payload: Any) -> None:
@@ -228,6 +253,9 @@ def write_dossier_to_root(
     )
     _dump_json(dossier_dir / "manifest.json", manifest.model_dump(mode="json"))
 
+    rejected_entries = [_rejected_index_entry(item) for item in rejected_records]
+    error_entries = [_error_index_entry(item) for item in errors]
+
     index_payload: dict[str, Any] = {
         "run_id": manifest.run_id,
         "subject": manifest.subject,
@@ -256,8 +284,16 @@ def write_dossier_to_root(
     }
     if model:
         index_payload["model"] = model
-    if errors:
-        index_payload["errors"] = [e.model_dump(mode="json") for e in errors]
+    if len(rejected_entries) > MAX_INDEX_DETAIL_ENTRIES:
+        index_payload["rejected"] = rejected_entries[:MAX_INDEX_DETAIL_ENTRIES]
+        index_payload["rejected_truncated"] = True
+    else:
+        index_payload["rejected"] = rejected_entries
+    if len(error_entries) > MAX_INDEX_DETAIL_ENTRIES:
+        index_payload["errors"] = error_entries[:MAX_INDEX_DETAIL_ENTRIES]
+        index_payload["errors_truncated"] = True
+    else:
+        index_payload["errors"] = error_entries
     _dump_json(dossier_dir / "index.json", index_payload)
 
     return dossier_dir

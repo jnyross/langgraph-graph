@@ -19,7 +19,7 @@ build/
 
 # uv
 # (do NOT commit uv.lock for an app template; uncomment to enforce if desired)
-# uv.lock
+uv.lock
 
 # Env / secrets
 .env
@@ -58,3 +58,6 @@ data/dossiers/*
 !data/dossiers/.gitkeep
 data/jurisdictions/runs/
 .worktrees/
+
+# Radar run artifacts (same policy as dossiers)
+data/radar/

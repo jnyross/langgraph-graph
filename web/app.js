@@ -53,6 +53,37 @@
     return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
+  // Aggregator emits runs as plain string ids; normalize to {run_id} objects.
+  function normalizeRuns(runs){
+    return (runs||[]).map(r => typeof r === "string" ? { run_id: r } : r).filter(r => r && (r.run_id || r.id));
+  }
+  // Filter laws/cells by the selected run when law records carry run provenance.
+  // Returns a norm-shaped object, or marks runFilterUnsupported when laws have
+  // no run/run_id field (selection cannot filter — UI shows an explanation).
+  function applyRunFilter(norm){
+    if (!norm || !state.selectedRunId) return norm;
+    const laws = norm.laws || [];
+    const hasRunField = laws.some(l => l && (l.run_id || l.run));
+    if (!hasRunField) return Object.assign({}, norm, { runFilterUnsupported: true });
+    const sel = String(state.selectedRunId);
+    const kept = laws.filter(l => String(l.run_id || l.run || "") === sel);
+    return buildFromLaws(kept, {
+      jurisdictions: norm.jurisdictions,
+      domains: norm.domains,
+      subject: norm.subject,
+      run_id: sel,
+    });
+  }
+
+  // Allowlist absolute http(s) URLs only; anything else (javascript:, data:,
+  // relative garbage from LLM-extracted records) renders as plain text.
+  function safeSourceHref(u){
+    try{
+      const parsed = new URL(u);
+      return (parsed.protocol === "http:" || parsed.protocol === "https:") ? parsed.href : null;
+    }catch(e){ return null; }
+  }
+
   // Data loading — try /api/matrix then fall back to static files.
   async function fetchJson(url){
     const r = await fetch(url, { headers:{Accept:"application/json"} });
@@ -90,10 +121,10 @@
     const root = data.matrix && typeof data.matrix === "object" ? data.matrix : data;
     // Multi-run wrapper: { runs, latest, run_id }
     if (Array.isArray(root.runs) && root.runs.length){
-      state.runs = root.runs;
+      state.runs = normalizeRuns(root.runs);
       // prefer selectedRunId if set, else latest/run_id, else first run
-      const want = state.selectedRunId || root.latest || root.run_id || root.runs[0].run_id;
-      const picked = root.runs.find(r=>r.run_id===want) || root.runs[0];
+      const want = state.selectedRunId || root.latest || root.run_id || (state.runs[0] && (state.runs[0].run_id || state.runs[0].id)) || "";
+      const picked = state.runs.find(r=>(r.run_id||r.id)===want) || state.runs[0];
       if (picked && picked.matrix) return normalizeMatrix(picked.matrix);
       if (picked && Array.isArray(picked.laws)) return buildFromLaws(picked.laws, picked);
       // if runs are just meta, use root laws/cells
@@ -287,6 +318,11 @@
       renderStats(null);
       return;
     }
+    if (norm.runFilterUnsupported){
+      wrap.innerHTML = `<div class="empty-matrix"><strong>Run filtering not available for this data</strong><br><span style="font-size:12px">The loaded matrix does not tag laws with a <code>run_id</code>, so the selected run cannot be applied. Showing all runs.</span></div>`;
+      renderStats(norm);
+      return;
+    }
     emptyEl.hidden = true;
     const jurs = filteredJurisdictions(norm);
     const doms = filteredDomains(norm);
@@ -415,7 +451,8 @@
     const conf = law.confidence;
     const confNum = conf==null? "" : Number(conf).toFixed(2);
     const excerpt = esc(law.excerpt || "");
-    const url = law.source_url || "";
+    const rawUrl = law.source_url || "";
+    const url = safeSourceHref(rawUrl);
     const status = esc(law.status || "");
     const eff = esc(law.effective_date || "");
     const validated = law.validated ? "validated" : "draft";
@@ -432,10 +469,11 @@
         <span class="badge">${validated}</span>
       </div>
       ${excerpt? `<pre class="excerpt">${excerpt}</pre>`:""}
-      ${url? `<div class="links"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Source ↗</a></div>`:""}
+      ${rawUrl ? (url
+        ? `<div class="links"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Source ↗</a></div>`
+        : `<div class="links"><span class="citation">${esc(rawUrl)}</span></div>`) : ""}
     </article>`;
   }
-
   function renderRunSelector(){
     const sel = qs("runSelector");
     const wrap = qs("runSelectorWrap");
@@ -450,7 +488,7 @@
       const extra = r.accepted_count!=null? ` · ${r.accepted_count} laws` : "";
       return `<option value="${esc(id)}">${esc(label)}${esc(extra)}</option>`;
     }).join("");
-    sel.value = state.selectedRunId || state.runs[0].run_id;
+    sel.value = state.selectedRunId || (state.runs[0] && (state.runs[0].run_id || state.runs[0].id)) || "";
   }
 
   function applySearchFilter(){
@@ -482,7 +520,7 @@
       state.selectedRunId = e.target.value;
       // reload matrix for that run if runs carry matrix, else re-normalize
       if (state._rawData) {
-        const norm = normalizeMatrix(state._rawData);
+        const norm = applyRunFilter(normalizeMatrix(state._rawData));
         if (norm){ state.raw = norm; renderRunSelector(); renderPills(norm); renderMatrix(norm); }
       }
     });
@@ -513,12 +551,13 @@
     state._rawData = data;
     // If data has runs, set selectedRunId
     if (data.runs && Array.isArray(data.runs) && data.runs.length){
-      state.runs = data.runs;
-      state.selectedRunId = data.latest || data.run_id || data.runs[0].run_id || "";
+      state.runs = normalizeRuns(data.runs);
+      const first = state.runs[0] || {};
+      state.selectedRunId = data.latest || data.run_id || first.run_id || first.id || "";
     } else if (data.latest || data.run_id){
       state.selectedRunId = data.latest || data.run_id;
     }
-    const norm = normalizeMatrix(data);
+    const norm = applyRunFilter(normalizeMatrix(data));
     if (!norm || (!norm.jurisdictions.length && !norm.laws.length)){
       state.raw = null;
       renderStats(null);

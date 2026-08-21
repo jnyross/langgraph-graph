@@ -5,13 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from langgraph_graph.meta_legal.models import LawRecordDraft, ResearchCell
-from langgraph_graph.meta_legal.nodes.research_cell import run_research_cell
+from langgraph_graph.meta_legal.nodes.research_cell import run_research_cell, validate_drafts
 from langgraph_graph.meta_legal.nodes.seed_harvest import (
     harvest_seed_instruments,
     merge_drafts,
     pair_instruments_and_seeds,
 )
-from langgraph_graph.meta_legal.nodes.validate_cell import validate_drafts
 
 
 def _eu_privacy_cell(**overrides: Any) -> ResearchCell:
@@ -59,20 +58,28 @@ def test_harvest_seed_instruments_eu_privacy_mocked_fetch() -> None:
     assert fetched, "harvest should fetch seed URLs when cache empty"
 
     accepted, rejected = validate_drafts(drafts, cell)
-    assert accepted, f"expected validate_cell to accept harvest drafts; rejected={rejected}"
+    assert accepted, f"expected folded validation to accept harvest drafts; rejected={rejected}"
 
 
-def test_harvest_emits_draft_even_when_fetch_empty() -> None:
+def test_harvest_skips_candidates_when_fetch_empty() -> None:
+    """Blank fetches are skipped entirely — no slug-derived titles."""
     cell = _eu_privacy_cell()
 
     def fetch_fn(url: str, max_chars: int = 12000) -> str:
         return ""
 
     drafts = harvest_seed_instruments(cell, fetch_fn=fetch_fn)
-    assert len(drafts) >= 1
-    assert all(d.title and d.source_url for d in drafts)
-    accepted, _rejected = validate_drafts(drafts, cell)
-    assert accepted
+    assert drafts == []
+
+
+def test_harvest_returns_empty_when_all_fetches_fail() -> None:
+    """All fetches failing yields [] so the caller's LLM gate can engage."""
+    cell = _eu_privacy_cell()
+
+    def fetch_fn(url: str, max_chars: int = 12000) -> str:
+        raise OSError(f"unreachable: {url}")
+
+    assert harvest_seed_instruments(cell, fetch_fn=fetch_fn) == []
 
 
 def test_pair_instruments_and_seeds_gdpr_match() -> None:
@@ -169,7 +176,7 @@ def test_run_research_cell_empty_search_and_llm_still_harvests() -> None:
     assert any(d.source_url.startswith("http") for d in result["drafts"])
 
 
-def test_run_research_cell_llm_failure_still_returns_harvest() -> None:
+def test_run_research_cell_all_fetches_fail_yields_no_drafts() -> None:
     cell = _eu_privacy_cell()
 
     def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
@@ -191,5 +198,6 @@ def test_run_research_cell_llm_failure_still_returns_harvest() -> None:
         fetch_fn=fetch_fn,
         llm=_BoomLLM(),
     )
-    assert len(result["drafts"]) >= 1
-    assert all(isinstance(d, LawRecordDraft) for d in result["drafts"])
+    # No fetched sources → no harvest drafts; LLM failure leaves zero drafts
+    # instead of unverified slug-derived ones.
+    assert result["drafts"] == []

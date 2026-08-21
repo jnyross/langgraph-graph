@@ -446,8 +446,6 @@ def generate_matrix_json(
     from datetime import UTC, datetime
 
     matrix["_generated_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    root = _dossier_root(dossier_root)
-    matrix["_dossier_root"] = str(root.resolve()) if root.exists() else str(root)
 
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)

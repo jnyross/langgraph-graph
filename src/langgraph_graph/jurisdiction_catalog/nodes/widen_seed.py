@@ -39,11 +39,20 @@ def _structurally_valid(
 
 def widen_seed(state: CatalogState) -> dict[str, Any]:
     """Append discovered candidates without changing the live catalog."""
+    if state.get("error"):
+        return {}
     discovered = state.get("discovered_candidates") or []
     if not state.get("auto_widen_seed", True) or not state.get("discovery_ran"):
         return {}
     if not discovered:
         return {}
+    verdicts: dict[str, str] = {}
+    for item in state.get("verifications") or []:
+        record = item if isinstance(item, dict) else item.model_dump()
+        verdicts[str(record.get("candidate_id"))] = str(record.get("verdict"))
+    verified_ids = {
+        candidate_id for candidate_id, verdict in verdicts.items() if verdict != "uncertain"
+    }
     seed_path = Path(state.get("seed_path") or _default_seed_path())
     try:
         document = json.loads(seed_path.read_text(encoding="utf-8"))
@@ -56,6 +65,7 @@ def widen_seed(state: CatalogState) -> dict[str, Any]:
             candidate
             for candidate in discovered
             if candidate.id not in existing_ids
+            and candidate.id in verified_ids
             and _structurally_valid(candidate, known_ids, rejected)
         ]
         additions.sort(key=lambda candidate: candidate.id)

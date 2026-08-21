@@ -60,7 +60,8 @@ def _catalog_jurisdictions(catalog: dict[str, Any] | None) -> list[dict[str, Any
             "parent_id": j.get("parent_id"),
             "domains_priority": j.get("domains_priority", []),
         }
-        for j in catalog.get("jurisdictions", [])
+        for j in catalog.get("jurisdictions") or []
+        if isinstance(j, dict)
     ]
 
 
@@ -68,8 +69,10 @@ def _known_laws_from_index(index: dict[str, Any] | None) -> list[dict[str, Any]]
     if not index:
         return []
     known: list[dict[str, Any]] = []
-    laws = index.get("laws", [])
+    laws = index.get("laws") or []
     for law in laws:
+        if not isinstance(law, dict):
+            continue
         known.append(
             {
                 "law_id": law.get("law_id") or law.get("id"),
@@ -86,15 +89,19 @@ def _known_laws_from_index(index: dict[str, Any] | None) -> list[dict[str, Any]]
 
 def load_context(state: RadarState) -> dict:
     """Read the catalog and dossier; hydrate known_laws and catalog metadata."""
-    catalog = _read_json(_CATALOG_PATH)
-    catalog_version = (catalog or {}).get("version", "")
-    catalog_jurisdictions = _catalog_jurisdictions(catalog)
+    try:
+        catalog = _read_json(_CATALOG_PATH)
+        catalog_version = str((catalog or {}).get("version", "") or "")
+        catalog_jurisdictions = _catalog_jurisdictions(catalog)
 
-    index = _load_dossier_index(state.get("dossier_run_id"))
-    known_laws = _known_laws_from_index(index)
+        index = _load_dossier_index(state.get("dossier_run_id"))
+        known_laws = _known_laws_from_index(index)
+    except Exception as exc:
+        return {"error": f"load_context failed: {exc}"}
 
     return {
         "catalog_version": catalog_version,
         "catalog_jurisdictions": catalog_jurisdictions,
         "known_laws": known_laws,
+        "error": None,
     }

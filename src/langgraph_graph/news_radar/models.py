@@ -6,7 +6,6 @@ import contextlib
 import hashlib
 import re
 from typing import Any, Literal
-from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -149,7 +148,7 @@ class RejectedSignal(BaseModel):
 class SignalCluster(BaseModel):
     """Corroborated cluster of related signals from distinct publishers."""
 
-    cluster_id: str = Field(default_factory=lambda: str(uuid4()))
+    cluster_id: str = ""
     title: str
     event_type: str = "other"
     jurisdiction_id: str = ""

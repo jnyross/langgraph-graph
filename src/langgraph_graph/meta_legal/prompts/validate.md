@@ -1,6 +1,6 @@
 # Validate cell — optional LLM adjudicator
 
-v1 validation is **rule-based** (`nodes/validate_cell.py`): required title,
+v1 validation is **rule-based** (folded into `nodes/research_cell.py`): required title,
 source URL, meta_nexus, and jurisdiction/domain match against the research cell.
 
 This prompt is reserved for a future second-pass adjudicator (same OpenRouter

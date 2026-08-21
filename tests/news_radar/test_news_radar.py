@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from itertools import permutations
 from uuid import uuid4
 
 from langgraph_graph.news_radar.graph import fanout_cells
@@ -14,9 +16,11 @@ from langgraph_graph.news_radar.models import (
     SignalRecord,
     WatchCell,
 )
+from langgraph_graph.news_radar.nodes import load_context as load_context_module
 from langgraph_graph.news_radar.nodes.cluster_signals import cluster_signals
 from langgraph_graph.news_radar.nodes.ingest_input import ingest_input
 from langgraph_graph.news_radar.nodes.link_known_laws import link_known_laws
+from langgraph_graph.news_radar.nodes.load_context import load_context
 from langgraph_graph.news_radar.nodes.plan_cells import plan_cells
 from langgraph_graph.news_radar.nodes.validate_signal import validate_signal
 from langgraph_graph.news_radar.nodes.write_radar import write_radar
@@ -189,7 +193,7 @@ def test_cluster_signals_groups_similar_titles() -> None:
     state = cluster_signals({"accepted": sigs, "include_rumors": False})
     clusters = state["clusters"]
     assert len(clusters) == 2
-    c0 = clusters[0]
+    c0 = next(c for c in clusters if "data act" in c.title.lower())
     assert isinstance(c0, SignalCluster)
     assert "data act amendment" in c0.title.lower()
     assert c0.distinct_publisher_count >= 2
@@ -304,3 +308,91 @@ def test_news_radar_studio_graph_compiles() -> None:
     # If Studio import succeeds, the bare compile must be valid.
     assert graph is not None
     assert "scan_cell" in [n for n in graph.get_graph().nodes]
+
+
+def _determinism_signals() -> list[SignalRecord]:
+    """Chain A~B, B~C above threshold but A~C below it: order-sensitive greedy."""
+    return [
+        SignalRecord(
+            title="Algorithmic accountability rules unveiled",
+            jurisdiction_id="european_union",
+            domain_id="ai",
+            source_name="Reuters",
+            source_url="https://reuters.com/a",
+            cell_id="eu::ai",
+        ),
+        SignalRecord(
+            title="Algorithmic accountability rules face penalties",
+            jurisdiction_id="european_union",
+            domain_id="ai",
+            source_name="Politico",
+            source_url="https://politico.eu/b",
+            cell_id="eu::ai",
+        ),
+        SignalRecord(
+            title="Accountability rules penalties for platforms",
+            jurisdiction_id="european_union",
+            domain_id="ai",
+            source_name="FT",
+            source_url="https://ft.com/c",
+            cell_id="eu::ai",
+        ),
+    ]
+
+
+def test_cluster_signals_deterministic_under_input_order() -> None:
+    sigs = _determinism_signals()
+    runs = []
+    for perm in permutations(sigs):
+        state = cluster_signals({"accepted": list(perm), "include_rumors": False})
+        runs.append([(c.cluster_id, list(c.signal_ids)) for c in state["clusters"]])
+
+    assert runs
+    assert all(run == runs[0] for run in runs)
+
+    clusters = cluster_signals({"accepted": sigs, "include_rumors": False})["clusters"]
+    assert [c.cluster_id for c in clusters] == sorted(c.cluster_id for c in clusters)
+    for cluster in clusters:
+        expected = hashlib.sha256(
+            "".join(sorted(cluster.signal_ids)).encode("utf-8")
+        ).hexdigest()[:16]
+        assert cluster.cluster_id == expected
+
+
+def test_load_context_coerces_version_and_degrades_malformed_entries(
+    tmp_path, monkeypatch
+) -> None:
+    catalog = {
+        "version": 42,
+        "jurisdictions": [
+            {"id": "united_states", "name": "United States", "level": "country"},
+            "not-a-dict",
+            None,
+        ],
+    }
+    catalog_path = tmp_path / "meta_operating_catalog.json"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    monkeypatch.setattr(load_context_module, "_CATALOG_PATH", catalog_path)
+    monkeypatch.setattr(load_context_module, "_DOSSIER_ROOT", tmp_path / "dossiers")
+
+    state = load_context({})
+
+    assert state["error"] is None
+    assert state["catalog_version"] == "42"
+    assert [j["id"] for j in state["catalog_jurisdictions"]] == ["united_states"]
+    assert state["known_laws"] == []
+
+
+def test_load_context_returns_error_state_on_unreadable_catalog(
+    tmp_path, monkeypatch
+) -> None:
+    def _boom(path):
+        raise RuntimeError("disk failure")
+
+    monkeypatch.setattr(load_context_module, "_CATALOG_PATH", tmp_path / "catalog.json")
+    monkeypatch.setattr(load_context_module, "_DOSSIER_ROOT", tmp_path / "dossiers")
+    monkeypatch.setattr(load_context_module, "_read_json", _boom)
+
+    state = load_context({})
+
+    assert state["error"] and "load_context failed" in state["error"]

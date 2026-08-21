@@ -30,7 +30,7 @@ def _rejection_reasons(
         draft.jurisdiction_id != cell.jurisdiction_id or draft.domain_id != cell.domain_id
     ):
         reasons.append("jurisdiction/domain mismatch with cell")
-    if not include_rumors and draft.is_rumor:
+    if not include_rumors and (draft.is_rumor or draft.event_type == "rumor"):
         reasons.append("rumor rejected because include_rumors is false")
     if draft.confidence < _MIN_CONFIDENCE:
         reasons.append(f"confidence {draft.confidence:.2f} below threshold")

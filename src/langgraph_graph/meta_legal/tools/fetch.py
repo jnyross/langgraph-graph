@@ -7,6 +7,7 @@ Thread-safe for concurrent fetches within a cell worker.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import re
 import threading
@@ -24,8 +25,19 @@ _SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript|svg|iframe)\b[^>]*>
 _TAG_RE = re.compile(r"(?s)<[^>]+>")
 _WS_RE = re.compile(r"[ \t\f\v]+")
 _BLANK_RE = re.compile(r"\n{3,}")
-
 _THREAD_LOCAL = threading.local()
+
+# Process-wide Firecrawl failure breaker (mirrors the search breaker): after N
+# consecutive failed scrapes, skip the doomed POST entirely for a cooldown so
+# auto mode stops paying it per URL and falls straight through to httpx.
+_FC_LOGGER = logging.getLogger(__name__)
+_FC_BREAKER_DEFAULT_N = 3
+_FC_BREAKER_DEFAULT_COOLDOWN_S = 120.0
+_FC_BREAKER_LOCK = threading.Lock()
+_FC_BREAKER_FAIL_STREAK = 0
+_FC_BREAKER_OPENED_AT: float | None = None
+_FC_WARNED_ONCE = False
+
 _CLIENT_LOCK = threading.Lock()
 _HOST_LOCK = threading.Lock()
 _HOST_NEXT_OK: dict[str, float] = {}
@@ -152,7 +164,11 @@ def _host_spacing_seconds() -> float:
 
 
 def _wait_host_spacing(url: str) -> None:
-    """Serialize lightly per host when spacing is configured."""
+    """Serialize lightly per host when spacing is configured.
+
+    The next-ok slot is reserved under the lock; the sleep happens outside it
+    so unrelated hosts are never serialized behind this caller's wait.
+    """
     gap = _host_spacing_seconds()
     if gap <= 0:
         return
@@ -165,11 +181,68 @@ def _wait_host_spacing(url: str) -> None:
     with _HOST_LOCK:
         now = time.monotonic()
         ready_at = _HOST_NEXT_OK.get(host, 0.0)
-        delay = ready_at - now
-        if delay > 0:
-            time.sleep(delay)
-            now = time.monotonic()
-        _HOST_NEXT_OK[host] = now + gap
+        delay = max(0.0, ready_at - now)
+        _HOST_NEXT_OK[host] = max(now, ready_at) + gap
+    if delay > 0:
+        time.sleep(delay)
+
+
+def _fetch_breaker_n() -> int:
+    from langgraph_graph.meta_legal._env import env_int
+
+    return env_int("META_LEGAL_FETCH_BREAKER_N", _FC_BREAKER_DEFAULT_N, minimum=1)
+
+
+def _fetch_breaker_cooldown_s() -> float:
+    from langgraph_graph.meta_legal._env import env_float
+
+    return env_float(
+        "META_LEGAL_FETCH_BREAKER_COOLDOWN_S", _FC_BREAKER_DEFAULT_COOLDOWN_S, minimum=0.0
+    )
+
+
+def _fetch_breaker_state() -> str:
+    """Return ``closed`` | ``open`` | ``half_open``. Never raises."""
+    with _FC_BREAKER_LOCK:
+        if _FC_BREAKER_OPENED_AT is None:
+            return "closed"
+        if time.monotonic() - _FC_BREAKER_OPENED_AT < _fetch_breaker_cooldown_s():
+            return "open"
+        return "half_open"
+
+
+def _fetch_breaker_record(success: bool) -> None:
+    """Track consecutive Firecrawl scrape failures; trip after N failures."""
+    global _FC_BREAKER_FAIL_STREAK, _FC_BREAKER_OPENED_AT
+    with _FC_BREAKER_LOCK:
+        if success:
+            _FC_BREAKER_FAIL_STREAK = 0
+            _FC_BREAKER_OPENED_AT = None
+            return
+        _FC_BREAKER_FAIL_STREAK += 1
+        if _fetch_breaker_n() <= _FC_BREAKER_FAIL_STREAK:
+            _FC_BREAKER_OPENED_AT = time.monotonic()
+
+
+def reset_fetch_breaker() -> None:
+    """Reset the Firecrawl fetch breaker (tests / process hygiene)."""
+    global _FC_BREAKER_FAIL_STREAK, _FC_BREAKER_OPENED_AT
+    with _FC_BREAKER_LOCK:
+        _FC_BREAKER_FAIL_STREAK = 0
+        _FC_BREAKER_OPENED_AT = None
+
+
+def _warn_firecrawl_failure_once() -> None:
+    """Log the first Firecrawl scrape failure per process (one-shot warning)."""
+    global _FC_WARNED_ONCE
+    with _FC_BREAKER_LOCK:
+        if _FC_WARNED_ONCE:
+            return
+        _FC_WARNED_ONCE = True
+    _FC_LOGGER.warning(
+        "firecrawl fetch failed; check FIRECRAWL_API_URL/FIRECRAWL_API_KEY — "
+        "falling back to httpx (further failures silent)"
+    )
 
 
 def _firecrawl_api_url() -> str:
@@ -227,6 +300,24 @@ def clear_fetch_cache() -> None:
 
 
 def _fetch_via_firecrawl(url: str, max_chars: int) -> str:
+    """Breaker-gated Firecrawl scrape; never raises.
+
+    When the failure breaker is open the doomed POST is skipped entirely so
+    auto mode falls straight through to httpx. Each failure feeds the breaker
+    and the first failure per process logs a one-shot warning.
+    """
+    if _fetch_breaker_state() == "open":
+        return ""
+    text = _fetch_via_firecrawl_request(url, max_chars)
+    if text:
+        _fetch_breaker_record(True)
+    else:
+        _fetch_breaker_record(False)
+        _warn_firecrawl_failure_once()
+    return text
+
+
+def _fetch_via_firecrawl_request(url: str, max_chars: int) -> str:
     """POST local/self-hosted Firecrawl ``/v2/scrape``; never raises.
 
     Returns truncated markdown on success, else ``""``.

@@ -77,7 +77,7 @@ def _write_signals(path: Path, signals: list[SignalRecord]) -> dict[str, Any]:
                 "cell_id": sig.cell_id,
             }
         )
-    timeline.sort(key=lambda x: (x["published_date"] or "9999", x["title"]))
+    timeline.sort(key=lambda x: (x["published_date"] or "9999", x["title"], x["signal_id"]))
     _dump_json(path / "timeline.json", timeline)
     return {"timeline": timeline}
 

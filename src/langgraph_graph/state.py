@@ -20,10 +20,6 @@ class AgentState(BaseModel):
         description="Conversation as OpenAI-style message dicts.",
     )
     plan: list[str] = Field(default_factory=list, description="Planned steps.")
-    pending_action: dict[str, Any] | None = Field(
-        default=None,
-        description="Action awaiting human approval before execution.",
-    )
     approvals: dict[str, bool] = Field(
         default_factory=dict,
         description="Per-action approval ledger (action_id -> granted).",

@@ -157,8 +157,9 @@ def test_research_cell_accepts_flat_send_payload_dict() -> None:
     assert out["drafts"][0].domain_id == "competition"
 
 
-def test_empty_search_still_harvests_aggregator_floor() -> None:
-    # Seedless jurisdiction: empty search no longer short-circuits; harvest floor emits drafts.
+def test_empty_search_harvests_when_fetches_succeed() -> None:
+    # Seedless jurisdiction: empty search no longer short-circuits; drafts are
+    # emitted only from successful seed fetches (worker_model='seed_harvest').
     cell = _sample_cell(
         cell_id="atlantis::ip",
         jurisdiction="Atlantis",
@@ -171,7 +172,7 @@ def test_empty_search_still_harvests_aggregator_floor() -> None:
         return []
 
     def fetch_fn(url: str, max_chars: int = 12000) -> str:
-        return ""
+        return "Instrument text: " + url
 
     class _BoomLLM:
         def invoke(self, *_a: Any, **_k: Any) -> Any:
@@ -185,12 +186,44 @@ def test_empty_search_still_harvests_aggregator_floor() -> None:
     )
 
     assert len(result["drafts"]) >= 1
+    assert all(d.worker_model == "seed_harvest" for d in result["drafts"])
     assert all(d.source_url.startswith("http") for d in result["drafts"])
     assert any("wipo.int" in d.source_url or "fao.org" in d.source_url for d in result["drafts"])
     # Soft warnings ok; hard "search returned no results" only when drafts empty.
     assert not any(
         err.message == "search returned no results" for err in result.get("cell_errors", [])
     )
+
+
+def test_empty_search_all_fetches_fail_yields_no_drafts() -> None:
+    # All seed fetches failing yields [] so the caller's LLM gate can engage.
+    cell = _sample_cell(
+        cell_id="atlantis::ip",
+        jurisdiction="Atlantis",
+        jurisdiction_id="atlantis",
+        domain="ip",
+        domain_id="ip",
+    )
+
+    def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
+        return []
+
+    def fetch_fn(url: str, max_chars: int = 12000) -> str:
+        raise RuntimeError("fetch backend down")
+
+    class _BoomLLM:
+        def invoke(self, *_a: Any, **_k: Any) -> Any:
+            raise AssertionError("llm should not be required when harvest floor works")
+
+    result = run_research_cell(
+        cell,
+        search_fn=search_fn,
+        fetch_fn=fetch_fn,
+        llm=_BoomLLM(),
+    )
+
+    assert result["drafts"] == []
+
 
 
 def test_build_search_queries_eu_privacy_instrument_first() -> None:
@@ -362,8 +395,9 @@ def test_research_cell_never_raises_on_total_tool_failure(monkeypatch: Any) -> N
         fetch_fn=fetch_fn,
         llm=_BadLLM(),
     )
-    assert len(out["drafts"]) >= 1  # harvest floor still produces drafts
+    assert out["drafts"] == []  # fetch-backed emission: no drafts when all tools fail
     assert out.get("cell_errors")
+    assert out.get("accepted") == []
 
     # Node entry must also soft-fail. Patch tools so the test stays offline.
     monkeypatch.setattr(
@@ -381,3 +415,87 @@ def test_research_cell_never_raises_on_total_tool_failure(monkeypatch: Any) -> N
     wrapped = research_cell({"cell_id": "y::privacy", "jurisdiction": "Y", "domain": "privacy"})
     assert "drafts" in wrapped
     assert isinstance(wrapped.get("drafts"), list)
+
+
+def _harvest_covered_llm_case(monkeypatch: Any) -> tuple[Any, dict[str, list[Any]]]:
+    """Harvest yields 3+ drafts (floor covered); return (fake_llm, result)."""
+    cell = _sample_cell()
+    seeds = seed_urls_for_cell(cell)
+    harvested = [
+        LawRecordDraft(
+            title=f"Harvested instrument {i}",
+            citation=f"Harvest citation {i}",
+            source_url=seeds[i % len(seeds)],
+            source_type="primary",
+            excerpt="harvested excerpt",
+            meta_nexus="platform_obligation",
+            language="en",
+            confidence=0.8,
+            worker_model="seed_harvest",
+            cell_id=cell.cell_id,
+            jurisdiction_id=cell.jurisdiction_id,
+            domain_id=cell.domain_id,
+        )
+        for i in range(3)
+    ]
+
+    def fake_harvest(resolved: Any, **_kwargs: Any) -> list[LawRecordDraft]:
+        return harvested
+
+    monkeypatch.setattr(
+        "langgraph_graph.meta_legal.nodes.research_cell.harvest_seed_instruments",
+        fake_harvest,
+    )
+
+    def search_fn(query: str, max_results: int = 5) -> list[dict[str, str]]:
+        return [
+            {
+                "title": "LLM-only source",
+                "url": "https://example.com/llm-source",
+                "snippet": "secondary commentary",
+            }
+        ]
+
+    def fetch_fn(url: str, max_chars: int = 12000) -> str:
+        return "Some page body."[:max_chars]
+
+    llm = _FakeLLM(
+        """
+        {
+          "drafts": [
+            {
+              "title": "LLM-extracted instrument",
+              "citation": "LLM citation",
+              "source_url": "https://example.com/llm-source",
+              "source_type": "secondary",
+              "excerpt": "llm excerpt",
+              "meta_nexus": "platform_obligation",
+              "meta_nexus_rationale": "platform duty",
+              "language": "en",
+              "status": "in_force",
+              "confidence": 0.9
+            }
+          ]
+        }
+        """
+    )
+    result = run_research_cell(cell, search_fn=search_fn, fetch_fn=fetch_fn, llm=llm)
+    return llm, result
+
+
+def test_force_llm_env_invokes_llm_even_when_harvest_covers(monkeypatch: Any) -> None:
+    monkeypatch.setenv("META_LEGAL_FORCE_LLM", "1")
+    llm, result = _harvest_covered_llm_case(monkeypatch)
+
+    assert llm.calls, "forced knob must run LLM extraction even with 3+ harvested drafts"
+    titles = {d.title for d in result["drafts"]}
+    assert "LLM-extracted instrument" in titles
+
+
+def test_default_env_skips_llm_when_harvest_covers(monkeypatch: Any) -> None:
+    monkeypatch.delenv("META_LEGAL_FORCE_LLM", raising=False)
+    llm, result = _harvest_covered_llm_case(monkeypatch)
+
+    assert llm.calls == [], "default env must skip LLM extraction when harvest covers"
+    titles = {d.title for d in result["drafts"]}
+    assert "LLM-extracted instrument" not in titles

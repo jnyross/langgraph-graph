@@ -2,8 +2,9 @@
 
 Topology (no HITL):
   START → ingest_input → plan_cells
-    → Send(research_cell) per cell (or skip to write_dossier when empty/error)
-    → validate_cell → aggregate_findings → write_dossier → END
+    → Send(research_cell) per cell — validation folded into the worker
+    (or skip to write_dossier when empty/error)
+    → aggregate_findings → write_dossier → END
 """
 
 from __future__ import annotations
@@ -22,7 +23,6 @@ from langgraph_graph.meta_legal.models import (
 )
 from langgraph_graph.meta_legal.nodes.plan_cells import plan_cells
 from langgraph_graph.meta_legal.nodes.research_cell import research_cell
-from langgraph_graph.meta_legal.nodes.validate_cell import validate_cell
 from langgraph_graph.meta_legal.nodes.write_dossier import write_dossier
 from langgraph_graph.meta_legal.state import ResearchState
 
@@ -124,7 +124,7 @@ def fanout_cells(state: ResearchState) -> list[Send] | str:
 
 
 def aggregate_findings(state: ResearchState) -> dict[str, Any]:
-    """Passthrough reduce node after parallel validate fan-in.
+    """Passthrough reduce node after parallel worker fan-in.
 
     Reducers on ``accepted`` / ``rejected`` / ``drafts`` / ``cell_errors``
     already merged worker output. Returning those lists again would
@@ -140,7 +140,6 @@ def _assemble_graph() -> StateGraph:
     g.add_node("ingest_input", ingest_input)  # type: ignore[type-var]
     g.add_node("plan_cells", plan_cells)  # type: ignore[type-var]
     g.add_node("research_cell", research_cell)  # type: ignore[type-var]
-    g.add_node("validate_cell", validate_cell)  # type: ignore[type-var]
     g.add_node("aggregate_findings", aggregate_findings)  # type: ignore[type-var]
     g.add_node("write_dossier", write_dossier)  # type: ignore[type-var]
 
@@ -151,8 +150,7 @@ def _assemble_graph() -> StateGraph:
         fanout_cells,
         ["research_cell", "write_dossier"],
     )
-    g.add_edge("research_cell", "validate_cell")
-    g.add_edge("validate_cell", "aggregate_findings")
+    g.add_edge("research_cell", "aggregate_findings")
     g.add_edge("aggregate_findings", "write_dossier")
     g.add_edge("write_dossier", END)
     return g

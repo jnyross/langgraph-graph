@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from concurrent.futures import TimeoutError as FuturesTimeout
 from concurrent.futures import as_completed
 from typing import Any
 from urllib.parse import quote_plus, unquote, urlparse
 
-from langgraph_graph.meta_legal._env import env_int
+from langgraph_graph.meta_legal._env import env_float, env_int
 from langgraph_graph.meta_legal.models import (
     LawRecordDraft,
     ResearchCell,
@@ -28,6 +29,19 @@ _EXCERPT_CHARS = 1200
 _DEFAULT_FETCH_CHARS = 8000
 _HARVEST_CONFIDENCE = 0.8
 _HARVEST_WORKER = "seed_harvest"
+
+# Harvest seed-prefetch shares the cell fetch budget by default so a hung
+# fetch cannot pin the cell past it (mirrors research_cell._fetch_budget_s).
+_DEFAULT_FETCH_BUDGET_S = 12.0
+
+
+def _fetch_budget_s() -> float:
+    return env_float(
+        "META_LEGAL_HARVEST_FETCH_BUDGET_S",
+        env_float("META_LEGAL_FETCH_BUDGET_S", _DEFAULT_FETCH_BUDGET_S, minimum=1.0),
+        minimum=0.5,
+    )
+
 
 # Loose citation fragments commonly embedded in instrument alias strings.
 _CITATION_RES: tuple[re.Pattern[str], ...] = (
@@ -301,8 +315,9 @@ def harvest_seed_instruments(
 ) -> list[LawRecordDraft]:
     """Build LawRecordDrafts from instrument names + paired seed URLs.
 
-    Fetches each seed when possible (reusing ``fetched_cache``), but always
-    emits a draft with title + source_url even when fetch returns empty.
+    Fetches each seed when possible (reusing ``fetched_cache``). A draft is
+    emitted only when its source page was successfully retrieved this run
+    (non-empty fetched text); failed or blank fetches are skipped entirely.
     Never raises.
     """
     try:
@@ -369,16 +384,23 @@ def harvest_seed_instruments(
         need.append(url)
     if need and fetch_fn is not None:
         workers = max(1, min(8, len(need)))
-        with DaemonThreadPoolExecutor(max_workers=workers) as pool:
+        pool = DaemonThreadPoolExecutor(max_workers=workers)
+        try:
             futs = {pool.submit(_safe_fetch, fetch_fn, url, max_chars_fetch): url for url in need}
-            for fut in as_completed(futs):
-                url = futs[fut]
-                try:
-                    text = fut.result() or ""
-                except Exception:
-                    text = ""
-                if text:
-                    cache[_norm_url(url)] = text
+            try:
+                for fut in as_completed(futs, timeout=_fetch_budget_s()):
+                    url = futs[fut]
+                    try:
+                        text = fut.result() or ""
+                    except Exception:
+                        text = ""
+                    if text:
+                        cache[_norm_url(url)] = text
+            except FuturesTimeout:
+                # Keep whatever arrived; stragglers are cancelled below.
+                pass
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     drafts: list[LawRecordDraft] = []
     seen_pair: set[tuple[str, str]] = set()
@@ -396,6 +418,10 @@ def harvest_seed_instruments(
             text = (cache[uk] or "").strip()
         elif fetched_cache is not None and url in fetched_cache:
             text = str(fetched_cache.get(url) or "").strip()
+        if not text:
+            # Fetch-backed emission: never publish slug-derived titles for
+            # pages we did not successfully retrieve this run.
+            continue
 
         excerpt = text[: max(0, int(max_chars_excerpt))].strip()
         source_type = "primary" if _is_official_host(url) else "secondary"

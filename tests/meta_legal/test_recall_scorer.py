@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from evals.meta_legal.match import (
+    citation_keys,
     citations_match,
     gold_found,
     jurisdictions_compatible,
@@ -115,6 +116,45 @@ def test_normalize_citation_strips_eu_boilerplate_variants() -> None:
     assert citations_match("TFEU Art. 101", "Article 101 TFEU")
     # Partial USC range vs single section should still match under family+substring.
     assert citations_match("15 U.S.C. §§ 6501–6506", "15 USC 6501")
+
+
+
+@pytest.mark.parametrize(
+    ("gold", "pred"),
+    [
+        # Regression: single-digit runs (d:5-1) collided across instruments.
+        ("Article 5(1)(a) GDPR", "Section 5(1) of the DSA"),
+        # Regression: bare numeric prefix matched via the family-substring path.
+        ("15 U.S.C. §123456", "15 USC 1234567"),
+    ],
+)
+def test_citations_match_rejects_cross_instrument_lookalikes(
+    gold: str, pred: str
+) -> None:
+    assert citations_match(gold, pred) is False
+    assert citations_match(pred, gold) is False
+
+
+def test_citations_match_partial_range_still_true() -> None:
+    """Genuine partial ranges keep matching via the explicit – separator."""
+    assert citations_match("15 U.S.C. §§ 6501–6506", "15 USC 6501") is True
+    assert citations_match("15 USC 6501", "15 U.S.C. §§ 6501–6506") is True
+
+
+def test_citation_keys_code_tokens_carry_section_digits() -> None:
+    """Regression: the code-token branch used to emit a bare family token
+    (t1:usc15) that collided across differing section numbers."""
+    assert citation_keys("15 U.S.C. §123456") & citation_keys("15 USC 1234567") == set()
+    assert "t1:usc123456" in citation_keys("15 U.S.C. §123456")
+    assert "t1:usc6501" in citation_keys("15 USC 6501")
+
+
+def test_citations_match_family_prefix_alone_never_matches() -> None:
+    """Shared statute-family prefix without equal digit runs stays False; the
+    genuine range pair still matches via the explicit separator branch."""
+    assert citations_match("15 U.S.C. §123456", "15 USC 1234567") is False
+    assert citations_match("15 USC 1234567", "15 U.S.C. §123456") is False
+    assert citations_match("15 U.S.C. §§ 6501–6506", "15 USC 6501") is True
 
 
 def test_normalize_title_slug() -> None:

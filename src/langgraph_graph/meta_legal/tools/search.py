@@ -359,7 +359,9 @@ def _search_firecrawl_api(
 
     data = payload.get("data") if isinstance(payload, dict) else None
     if isinstance(data, dict):
-        web = data.get("web") or []
+        # v2 routes results by source type: web searches land in ``web``,
+        # news-topic searches (sources=[{"type": "news"}]) land in ``news``.
+        web = list(data.get("web") or []) + list(data.get("news") or [])
     elif isinstance(data, list):
         web = data
     else:
@@ -722,9 +724,9 @@ def web_search(
 
     Provider order in ``auto`` mode:
       1. Tavily when ``TAVILY_API_KEY`` is set
-      2. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
-      3. ddgs / duckduckgo_search as the offline/dev fallback
-
+      2. Firecrawl v2 REST API when ``FIRECRAWL_API_KEY`` is set
+      3. Firecrawl cloud CLI when ``firecrawl`` binary is on PATH
+      4. ddgs / duckduckgo_search as the offline/dev fallback
     Set ``META_LEGAL_SEARCH_BACKEND`` to ``tavily``, ``firecrawl``,
     ``firecrawl_cli``, or ``ddg`` to force a single backend for benchmarking.
     ``firecrawl`` uses the Firecrawl v2 API (cloud or self-hosted) first and
@@ -761,6 +763,8 @@ def web_search(
             _breaker_record(bool(out))
             return out
         except Exception:
+            # A crashing probe is a backend failure too: feed the breaker.
+            _breaker_record(False)
             return []
 
     backend = _search_backend()
@@ -780,6 +784,13 @@ def web_search(
         # auto
         if os.getenv("TAVILY_API_KEY"):
             return _wrap_result(_search_tavily)
+        if os.getenv("FIRECRAWL_API_KEY"):
+            # Firecrawl REST API before CLI/DDG fallbacks; still authoritative
+            # when it returns empty and no CLI probe can follow.
+            out = _wrap_result(_search_firecrawl_api)
+            if out or not _firecrawl_cli_available():
+                return out
+            return _wrap_result(_search_firecrawl_cli)
         if _firecrawl_cli_available():
             # CLI is authoritative: empty results do not stampede DDG.
             return _wrap_result(_search_firecrawl_cli)

@@ -9,6 +9,7 @@ from typing import Any
 
 from langgraph_graph.jurisdiction_catalog.state import CatalogState
 from langgraph_graph.meta_legal.jurisdictions import default_catalog_path, load_catalog
+from langgraph_graph.meta_legal.models import slugify
 from langgraph_graph.meta_legal.run_config import write_run_metrics
 
 
@@ -24,6 +25,19 @@ def _catalog_entry(item: Any) -> dict[str, Any]:
         key: raw.get(key)
         for key in ("id", "name", "level", "parent_id", "domains_priority", "rationale")
     }
+
+
+def _in_scope(entry: dict[str, Any], levels: set[str], regions: set[str]) -> bool:
+    """Mirror planner scoping to decide whether an entry belongs to this run."""
+    if levels and str(entry.get("level") or "") not in levels:
+        return False
+    return not (
+        regions
+        and not (
+            {slugify(str(entry.get("name") or "")), slugify(str(entry.get("parent_id") or ""))}
+            & regions
+        )
+    )
 
 
 def write_catalog(state: CatalogState) -> dict[str, Any]:
@@ -56,11 +70,29 @@ def write_catalog(state: CatalogState) -> dict[str, Any]:
     validation_failures = [
         item for item in rejected if item.get("reason") not in {"uncertain", "exclude"}
     ]
+    uncertain = [item for item in rejected if item.get("reason") == "uncertain"]
+    errors = list(state.get("errors") or [])
+    diff = state.get("diff") or {}
+    levels = {str(x) for x in (state.get("levels") or [])}
+    regions = {slugify(str(x)) for x in (state.get("regions") or [])}
+    out_of_scope_removals = [
+        entry
+        for entry in diff.get("removed") or []
+        if not _in_scope(entry, levels, regions)
+    ]
     promotion_reasons: list[str] = []
     if not state.get("promote"):
         promotion_reasons.append("promotion not requested")
     if validation_failures:
         promotion_reasons.append("validation-rule failures are present")
+    if uncertain:
+        promotion_reasons.append(f"{len(uncertain)} uncertain verifications present")
+    if errors:
+        promotion_reasons.append("run errors present")
+    if out_of_scope_removals:
+        promotion_reasons.append(
+            f"{len(out_of_scope_removals)} removed entries fall outside the run scope"
+        )
     try:
         current_count = len(load_catalog().get("jurisdictions", []))
     except Exception as exc:
@@ -90,7 +122,6 @@ def write_catalog(state: CatalogState) -> dict[str, Any]:
         report += "".join(f"- {reason}\n" for reason in promotion_reasons)
     else:
         report += "Promotion passed validation and sanity gates.\n"
-    errors = list(state.get("errors") or [])
     if errors:
         report += "\nErrors:\n"
         report += "".join(f"- {error}\n" for error in errors)

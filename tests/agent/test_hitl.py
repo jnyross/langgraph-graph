@@ -61,6 +61,10 @@ def test_build_hitl_request_matches_agent_chat_ui_schema() -> None:
             {"to": "me"},
         ),
         (False, False, "send_message", {"to": "me"}),
+        ({"decisions": [{"message": "no"}]}, False, "send_message", {"to": "me"}),
+        ({"decisions": []}, False, "send_message", {"to": "me"}),
+        ("please do whatever you like", False, "send_message", {"to": "me"}),
+        (None, False, "send_message", {"to": "me"}),
     ],
 )
 def test_resolve_hitl_decision(resume: Any, granted: bool, tool: str, args: dict[str, Any]) -> None:
@@ -169,6 +173,77 @@ def test_act_node_reject_skips_tool() -> None:
 
     assert final["approvals"].get("act-1") is False
     assert final["output"] == "Not now"
+
+
+def test_act_node_edit_uses_edited_args() -> None:
+    from langgraph_graph.graph import build_graph
+
+    fake_llm = MagicMock()
+    fake_llm.invoke.return_value = MagicMock(content="plan")
+
+    with patch("langgraph_graph.graph._llm", return_value=fake_llm):
+        graph = build_graph()
+        config = {"configurable": {"thread_id": "hitl-test-edit"}}
+        graph.invoke(
+            {
+                "messages": [{"role": "user", "content": "Ping me"}],
+            },
+            config=config,
+        )
+        final = graph.invoke(
+            Command(
+                resume={
+                    "decisions": [
+                        {
+                            "type": "edit",
+                            "edited_action": {
+                                "name": "send_message",
+                                "args": {"to": "you", "body": "edited body"},
+                            },
+                        }
+                    ]
+                }
+            ),
+            config=config,
+        )
+
+    assert final["approvals"].get("act-1") is True
+    assert "[stub] message sent to you: 'edited body'" in final["output"]
+
+
+def test_act_node_unknown_tool_name_is_not_executed() -> None:
+    from langgraph_graph.graph import build_graph
+
+    fake_llm = MagicMock()
+    fake_llm.invoke.return_value = MagicMock(content="plan")
+
+    with patch("langgraph_graph.graph._llm", return_value=fake_llm):
+        graph = build_graph()
+        config = {"configurable": {"thread_id": "hitl-test-unknown"}}
+        graph.invoke(
+            {
+                "messages": [{"role": "user", "content": "Ping me"}],
+            },
+            config=config,
+        )
+        final = graph.invoke(
+            Command(
+                resume={
+                    "decisions": [
+                        {
+                            "type": "edit",
+                            "edited_action": {
+                                "name": "no_such_tool",
+                                "args": {},
+                            },
+                        }
+                    ]
+                }
+            ),
+            config=config,
+        )
+
+    assert final["output"] == "Unknown tool 'no_such_tool'; nothing executed."
 
 
 def test_follow_up_messages_override_persisted_input() -> None:

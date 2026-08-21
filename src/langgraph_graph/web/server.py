@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import mimetypes
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -160,8 +161,9 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
             try:
                 matrix = collect_all_laws(dossier_root)
                 self._send_json(matrix)
-            except Exception as exc:  # pragma: no cover
-                self._send_json({"error": str(exc)}, status=500)
+            except Exception:  # pragma: no cover
+                logging.exception("GET /api/matrix failed")
+                self._send_json({"error": "internal server error"}, status=500)
 
         def _handle_laws(self, qs: dict[str, list[str]]) -> None:
             try:
@@ -218,8 +220,9 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
                         "laws": filtered,
                     }
                 )
-            except Exception as exc:  # pragma: no cover
-                self._send_json({"error": str(exc)}, status=500)
+            except Exception:  # pragma: no cover
+                logging.exception("GET /api/laws failed")
+                self._send_json({"error": "internal server error"}, status=500)
 
         def _handle_runs(self) -> None:
             try:
@@ -229,8 +232,9 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
                     manifest = load_manifest(run_id, dossier_root)
                     items.append({"run_id": run_id, "manifest": manifest})
                 self._send_json({"count": len(items), "runs": items})
-            except Exception as exc:  # pragma: no cover
-                self._send_json({"error": str(exc)}, status=500)
+            except Exception:  # pragma: no cover
+                logging.exception("GET /api/runs failed")
+                self._send_json({"error": "internal server error"}, status=500)
 
         # ---- static ----
 
@@ -238,12 +242,18 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
             # Normalize path
             if path == "/":
                 path = "/index.html"
-            # Prevent directory traversal
             safe = Path(path.lstrip("/"))
             if ".." in safe.parts:
                 self._send_text("Not found", status=404)
                 return
-            file_path = web_dir / safe
+            # Resolve and enforce the final path stays inside web_dir
+            # (covers absolute segments, symlink escapes, Windows drive letters).
+            try:
+                file_path = (web_dir / safe).resolve()
+                file_path.relative_to(web_dir.resolve())
+            except (ValueError, OSError):
+                self._send_text("Not found", status=404)
+                return
             # If path is a directory, try index.html
             if file_path.is_dir():
                 file_path = file_path / "index.html"
@@ -276,9 +286,11 @@ def _make_handler(web_dir: Path, dossier_root: Path | None):
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
-            self.send_header("Access-Control-Allow-Origin", "*")
-            # Simple caching for static assets
-            if file_path.suffix in (".js", ".css", ".png", ".jpg", ".svg", ".woff2"):
+            if file_path.suffix in (".html", ".htm"):
+                self.send_header("Cache-Control", "no-cache")
+            elif file_path.suffix == ".json":
+                self.send_header("Cache-Control", "no-store")
+            elif file_path.suffix in (".js", ".css", ".png", ".jpg", ".svg", ".woff2"):
                 self.send_header("Cache-Control", "public, max-age=3600")
             self.end_headers()
             self.wfile.write(data)

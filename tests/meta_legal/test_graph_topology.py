@@ -13,7 +13,6 @@ REQUIRED_NODES = {
     "ingest_input",
     "plan_cells",
     "research_cell",
-    "validate_cell",
     "write_dossier",
 }
 
@@ -112,10 +111,11 @@ def test_mocked_integration_two_cells_writes_dossier(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Invoke with 2 cells; mock research_cell; real validate + write."""
+    """Invoke with 2 cells; mock research_cell; real folded validation + write."""
     import importlib
 
-    from langgraph_graph.meta_legal.models import LawRecordDraft
+    from langgraph_graph.meta_legal.models import LawRecordDraft, ResearchCell
+    from langgraph_graph.meta_legal.nodes.research_cell import validate_drafts
 
     # Package exports ``graph`` (compiled), which shadows the submodule name.
     graph_module = importlib.import_module("langgraph_graph.meta_legal.graph")
@@ -151,7 +151,24 @@ def test_mocked_integration_two_cells_writes_dossier(
             meta_nexus="platform_obligation",
             source_url="https://example.test/weak",
         )
-        return {"drafts": [good, weak], "cell_errors": []}
+        accepted, rejected = validate_drafts(
+            [good, weak],
+            cell=ResearchCell.model_validate(
+                {
+                    "cell_id": cell_id,
+                    "jurisdiction": jurisdiction_id,
+                    "jurisdiction_id": jurisdiction_id,
+                    "domain": domain_id,
+                    "domain_id": domain_id,
+                }
+            ),
+        )
+        return {
+            "drafts": [good, weak],
+            "accepted": accepted,
+            "rejected": rejected,
+            "cell_errors": [],
+        }
 
     # Patch the symbol used when assembling the graph, then rebuild.
     monkeypatch.setattr(graph_module, "research_cell", _fake_research)

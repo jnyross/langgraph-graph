@@ -67,3 +67,11 @@ def env_choice(name: str, default: str, valid: set[str]) -> str:
         return default
     cand = raw.strip().lower()
     return cand if cand in valid else default
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Parse bool env var (1/true/yes/on, case-insensitive) with *default* fallback."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}

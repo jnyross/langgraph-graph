@@ -22,7 +22,8 @@ def get_llm(model: str | None = None, **kwargs: Any):
     """Return a ChatOpenAI client pointed at OpenRouter (lazy import).
 
     Defaults:
-        model: OPENROUTER_MODEL or DEEPSEEK_MODEL or ``~deepseek/deepseek-v4-flash-latest``
+        model: OPENROUTER_MODEL or DEEPSEEK_MODEL or META_LEGAL_WORKER_MODEL
+        or ``~deepseek/deepseek-v4-flash-latest``
         api_key: OPENROUTER_API_KEY, falling back to OPENAI_API_KEY
         base_url: OPENROUTER_BASE_URL or ``https://openrouter.ai/api/v1``
         temperature: 0
@@ -32,7 +33,11 @@ def get_llm(model: str | None = None, **kwargs: Any):
     from langchain_openai import ChatOpenAI
 
     resolved_model = (
-        model or os.getenv("OPENROUTER_MODEL") or os.getenv("DEEPSEEK_MODEL") or DEFAULT_MODEL
+        model
+        or os.getenv("OPENROUTER_MODEL")
+        or os.getenv("DEEPSEEK_MODEL")
+        or os.getenv("META_LEGAL_WORKER_MODEL")
+        or DEFAULT_MODEL
     )
     api_key = (
         kwargs.pop("api_key", None)

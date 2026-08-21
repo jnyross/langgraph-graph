@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -26,18 +28,18 @@ COMMITS = [
 ]
 
 
-def sh(args: list[str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(args, cwd=REPO, text=True, capture_output=True, **kw)
+def sh(args: list[str], cwd: Path | None = None, **kw) -> subprocess.CompletedProcess:
+    return subprocess.run(args, cwd=cwd or REPO, text=True, capture_output=True, **kw)
 
 
-def analyze(exp_id: str) -> dict:
-    rows = [
-        json.loads(l)
-        for l in LOG.read_text().splitlines()
-        if l.strip()
-    ]
+def analyze(exp_id: str, root: Path = REPO) -> dict:
+    log = root / "evals/meta_legal/experiments/log.jsonl"
+    rows = [json.loads(l) for l in log.read_text().splitlines() if l.strip()]
     row = [r for r in rows if r.get("exp_id") == exp_id][-1]
-    idx = json.loads((Path(row["dossier"]) / "index.json").read_text())
+    dossier = Path(row["dossier"])
+    if not dossier.is_absolute():
+        dossier = root / dossier
+    idx = json.loads((dossier / "index.json").read_text())
     by = Counter(l["cell_id"] for l in idx["laws"])
     cov = sum(1 for c in idx["cell_ids"] if by.get(c, 0) >= 1)
     no = sum(
@@ -47,7 +49,7 @@ def analyze(exp_id: str) -> dict:
     )
     rich = empty = 0
     for law in idx["laws"]:
-        p = Path(row["dossier"]) / law["path"]
+        p = dossier / law["path"]
         if not p.is_file():
             continue
         o = json.loads(p.read_text())
@@ -69,12 +71,22 @@ def analyze(exp_id: str) -> dict:
 
 
 def already_logged(exp_id: str) -> bool:
+    """A log row counts only when its dossier still exists on disk."""
     if not LOG.is_file():
         return False
     for l in LOG.read_text().splitlines():
         if not l.strip():
             continue
-        if json.loads(l).get("exp_id") == exp_id:
+        row = json.loads(l)
+        if row.get("exp_id") != exp_id:
+            continue
+        dossier = row.get("dossier")
+        if not dossier:
+            continue
+        path = Path(dossier)
+        if not path.is_absolute():
+            path = REPO / path
+        if (path / "index.json").is_file():
             return True
     return False
 
@@ -90,22 +102,20 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    start = REPO
-    original = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
-    if original == "HEAD":
-        original = "main"
 
-    try:
-        for c in COMMITS:
-            short = sh(["git", "rev-parse", "--short", c]).stdout.strip()
-            subj = sh(["git", "log", "-1", "--format=%s", c]).stdout.strip().replace("\t", " ")
-            exp = f"exp_camp_{short}"
-            print(f"\n===== GOLD63 {short} =====", flush=True)
-            print(subj, flush=True)
+    for c in COMMITS:
+        short = sh(["git", "rev-parse", "--short", c]).stdout.strip()
+        subj = sh(["git", "log", "-1", "--format=%s", c]).stdout.strip().replace("\t", " ")
+        exp = f"exp_camp_{short}"
+        print(f"\n===== GOLD63 {short} =====", flush=True)
+        print(subj, flush=True)
 
-            co = sh(["git", "checkout", "-q", c])
-            if co.returncode != 0:
-                print(co.stderr, file=sys.stderr)
+        # Isolate each commit in a throwaway worktree; never touch the live tree.
+        tmpdir = Path(tempfile.mkdtemp(prefix=f"gold_gate_{short}_"))
+        try:
+            wa = sh(["git", "worktree", "add", "--detach", str(tmpdir), c])
+            if wa.returncode != 0:
+                print(wa.stderr, file=sys.stderr)
                 continue
 
             if not already_logged(exp):
@@ -125,7 +135,7 @@ def main() -> int:
                     "--notes",
                     f"gold gate bisect {short}",
                 ]
-                proc = sh(cmd, timeout=900)
+                proc = sh(cmd, cwd=tmpdir, timeout=900)
                 Path(f"/tmp/gold_{short}.log").write_text(
                     (proc.stdout or "") + "\n" + (proc.stderr or ""), encoding="utf-8"
                 )
@@ -138,7 +148,7 @@ def main() -> int:
             else:
                 print("reuse existing log row", flush=True)
 
-            m = analyze(exp)
+            m = analyze(exp, root=REPO if already_logged(exp) else tmpdir)
             line = (
                 f"{short}\t{subj}\t{m['elapsed']}\t{m['recall']}\t{m['found']}\t"
                 f"{m['accepted']}\t{m['cov']}\t{m['rich']}\t{m['empty']}\t{m['no_res']}\n"
@@ -149,8 +159,10 @@ def main() -> int:
                 f"  PASS_RECALL={float(m['recall'] or 0) >= 0.98} dossier={m['dossier']}",
                 flush=True,
             )
-    finally:
-        sh(["git", "checkout", "-q", original])
+        finally:
+            sh(["git", "worktree", "remove", "--force", str(tmpdir)])
+            sh(["git", "worktree", "prune"])
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     print("\n===== SUMMARY =====", flush=True)
     print(OUT.read_text(), flush=True)

@@ -173,7 +173,6 @@ def _fallback_build_matrix(output_path: Path, dossier_root: Path) -> Path:
             "coverage": coverage,
         },
         "_generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "_dossier_root": str(root.resolve()) if root.exists() else str(root),
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

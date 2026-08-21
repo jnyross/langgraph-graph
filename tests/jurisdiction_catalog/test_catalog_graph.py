@@ -437,6 +437,14 @@ def test_widen_seed_appends_discovered_candidate_idempotently(tmp_path) -> None:
         "discovered_candidates": [candidate],
         "candidates": [candidate],
         "rejected": [{"candidate": candidate.model_dump(), "reason": "uncertain"}],
+        "verifications": [
+            Verification(
+                candidate_id="new_body",
+                candidate=candidate,
+                verdict="include",
+                confidence=0.9,
+            )
+        ],
     }
     widen_seed(state)
     first = seed.read_bytes()
@@ -500,3 +508,203 @@ def test_widen_seed_skips_structurally_invalid_candidate(tmp_path) -> None:
         }
     )
     assert seed.read_text(encoding="utf-8") == original
+
+
+def test_promotion_blocked_by_uncertain_verifications(tmp_path, monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.write_catalog"
+    )
+    live = tmp_path / "live.json"
+    current = {
+        "version": "1",
+        "subject": "Meta",
+        "jurisdictions": [{"id": "x", "name": "X", "level": "country"}],
+    }
+    live.write_text(json.dumps(current), encoding="utf-8")
+    monkeypatch.setattr(module, "default_catalog_path", lambda: live)
+    monkeypatch.setattr(module, "load_catalog", lambda path=None: current)
+    candidate = {"id": "x", "name": "X", "level": "country"}
+    module.write_catalog(
+        {
+            "run_id": "uncertain",
+            "write_target": str(tmp_path),
+            "promote": True,
+            "validated": [candidate],
+            "rejected": [{"candidate": candidate, "reason": "uncertain"}],
+            "candidates": [],
+            "diff": {},
+        }
+    )
+    assert json.loads(live.read_text(encoding="utf-8")) == current
+    report = (tmp_path / "uncertain" / "report.md").read_text(encoding="utf-8")
+    assert "1 uncertain verifications present" in report
+
+
+def test_promotion_blocked_by_run_errors(tmp_path, monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.write_catalog"
+    )
+    live = tmp_path / "live.json"
+    current = {
+        "version": "1",
+        "subject": "Meta",
+        "jurisdictions": [{"id": "x", "name": "X", "level": "country"}],
+    }
+    live.write_text(json.dumps(current), encoding="utf-8")
+    monkeypatch.setattr(module, "default_catalog_path", lambda: live)
+    monkeypatch.setattr(module, "load_catalog", lambda path=None: current)
+    candidate = {"id": "x", "name": "X", "level": "country"}
+    module.write_catalog(
+        {
+            "run_id": "errored",
+            "write_target": str(tmp_path),
+            "promote": True,
+            "validated": [candidate],
+            "rejected": [],
+            "candidates": [],
+            "errors": ["search backend failed"],
+            "diff": {},
+        }
+    )
+    assert json.loads(live.read_text(encoding="utf-8")) == current
+    report = (tmp_path / "errored" / "report.md").read_text(encoding="utf-8")
+    assert "run errors present" in report
+
+
+def test_promotion_blocked_by_out_of_scope_removal(tmp_path, monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.write_catalog"
+    )
+    live = tmp_path / "live.json"
+    current = {
+        "version": "1",
+        "subject": "Meta",
+        "jurisdictions": [
+            {"id": "x", "name": "X", "level": "country"},
+            {"id": "y", "name": "Y", "level": "us_state", "parent_id": None},
+        ],
+    }
+    live.write_text(json.dumps(current), encoding="utf-8")
+    monkeypatch.setattr(module, "default_catalog_path", lambda: live)
+    monkeypatch.setattr(module, "load_catalog", lambda path=None: current)
+    module.write_catalog(
+        {
+            "run_id": "scoped",
+            "write_target": str(tmp_path),
+            "promote": True,
+            "levels": ["country"],
+            "validated": [{"id": "x", "name": "X", "level": "country"}],
+            "rejected": [],
+            "candidates": [],
+            "diff": {
+                "removed": [{"id": "y", "name": "Y", "level": "us_state", "parent_id": None}]
+            },
+        }
+    )
+    assert json.loads(live.read_text(encoding="utf-8")) == current
+    report = (tmp_path / "scoped" / "report.md").read_text(encoding="utf-8")
+    assert "1 removed entries fall outside the run scope" in report
+
+
+def test_clean_promotion_still_succeeds(tmp_path, monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module(
+        "langgraph_graph.jurisdiction_catalog.nodes.write_catalog"
+    )
+    live = tmp_path / "live.json"
+    current = {
+        "version": "1",
+        "subject": "Meta",
+        "jurisdictions": [{"id": "x", "name": "X", "level": "country"}],
+    }
+    live.write_text(json.dumps(current), encoding="utf-8")
+    monkeypatch.setattr(module, "default_catalog_path", lambda: live)
+    monkeypatch.setattr(module, "load_catalog", lambda path=None: current)
+    module.write_catalog(
+        {
+            "run_id": "clean",
+            "write_target": str(tmp_path),
+            "promote": True,
+            "validated": [{"id": "x", "name": "X", "level": "country"}],
+            "rejected": [],
+            "candidates": [],
+            "diff": {},
+        }
+    )
+    promoted = json.loads(live.read_text(encoding="utf-8"))
+    assert promoted["version"] == "2"
+    assert [entry["id"] for entry in promoted["jurisdictions"]] == ["x"]
+    report = (tmp_path / "clean" / "report.md").read_text(encoding="utf-8")
+    assert "Promotion passed validation and sanity gates." in report
+
+
+def test_widen_seed_skips_errored_run(tmp_path) -> None:
+    seed = tmp_path / "seed.json"
+    original = '{"version":"2","candidates":[]}\n'
+    seed.write_text(original, encoding="utf-8")
+    candidate = Candidate(
+        id="new_body",
+        name="New Body",
+        level="supranational",
+        source="discovered",
+    )
+    widen_seed(
+        {
+            "seed_path": str(seed),
+            "auto_widen_seed": True,
+            "discovery_ran": True,
+            "error": "candidate planning failed",
+            "discovered_candidates": [candidate],
+            "candidates": [candidate],
+            "verifications": [
+                {"candidate_id": "new_body", "verdict": "include"},
+            ],
+        }
+    )
+    assert seed.read_text(encoding="utf-8") == original
+
+
+def test_widen_seed_persists_only_verified_candidates(tmp_path) -> None:
+    seed = tmp_path / "seed.json"
+    original = '{"version":"2","candidates":[]}\n'
+    seed.write_text(original, encoding="utf-8")
+    verified = Candidate(
+        id="verified_body",
+        name="Verified Body",
+        level="supranational",
+        source="discovered",
+    )
+    uncertain = Candidate(
+        id="uncertain_body",
+        name="Uncertain Body",
+        level="supranational",
+        source="discovered",
+    )
+    unverified = Candidate(
+        id="unverified_body",
+        name="Unverified Body",
+        level="supranational",
+        source="discovered",
+    )
+    widen_seed(
+        {
+            "seed_path": str(seed),
+            "auto_widen_seed": True,
+            "discovery_ran": True,
+            "discovered_candidates": [verified, uncertain, unverified],
+            "candidates": [verified, uncertain, unverified],
+            "verifications": [
+                {"candidate_id": "verified_body", "verdict": "include"},
+                {"candidate_id": "uncertain_body", "verdict": "uncertain"},
+            ],
+        }
+    )
+    document = json.loads(seed.read_text(encoding="utf-8"))
+    assert [item["id"] for item in document["discovered_candidates"]] == ["verified_body"]

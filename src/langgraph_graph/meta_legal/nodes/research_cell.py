@@ -1,8 +1,15 @@
-"""Research-cell worker: search → fetch → LLM extract LawRecordDrafts.
+"""Research-cell worker: search → fetch → validate → LLM extract LawRecordDrafts.
 
 Soft-fail contract: never raise into the graph. Failures become ``cell_errors``
 and/or empty ``drafts`` list updates for the Annotated reducers. Seed harvest
 always floors drafts when curated instruments/URLs exist (exp_006).
+
+Rule-based per-cell draft validation (``validate_drafts``) is folded into this
+worker: each Send fan-out branch validates its own drafts against the cell and
+the URLs actually searched/fetched for that cell, so mismatch rejection,
+canonical-id alignment, cell stamping, and source-allowlist enforcement really
+execute per cell (the former standalone ``validate_cell`` node only ever saw
+merged state with ``cell=None``).
 """
 
 import json
@@ -12,15 +19,19 @@ import time
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import TimeoutError as FuturesTimeout
 from concurrent.futures import as_completed
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
 from langgraph_graph.meta_legal.llm import DEFAULT_MODEL, get_llm
 from langgraph_graph.meta_legal.models import (
     CellError,
+    LawRecord,
     LawRecordDraft,
+    RejectedRecord,
     ResearchCell,
     make_cell_id,
     normalize_domain,
@@ -43,6 +54,15 @@ FetchFn = Callable[[str, int], str]
 # Speed campaign defaults: tight caps; harvest floor preserves coverage.
 DEFAULT_MAX_QUERIES = 3
 DEFAULT_SEARCH_BUDGET_S = 4.0
+DEFAULT_FETCH_BUDGET_S = 12.0
+
+
+def _fetch_budget_s() -> float:
+    from langgraph_graph.meta_legal._env import env_float
+
+    return env_float("META_LEGAL_FETCH_BUDGET_S", DEFAULT_FETCH_BUDGET_S, minimum=1.0)
+
+
 _SEARCH_QUERY_WORKERS = 6
 
 
@@ -1107,15 +1127,21 @@ class _ExtractedLawList(BaseModel):
     drafts: list[_ExtractedLawItem] = Field(default_factory=list)
 
 
-def _load_system_prompt(cell: ResearchCell) -> str:
+@lru_cache(maxsize=1)
+def _prompt_template() -> str:
+    """Read prompts/research.md once per process (hot path: every LLM call)."""
     try:
-        template = _PROMPT_PATH.read_text(encoding="utf-8")
+        return _PROMPT_PATH.read_text(encoding="utf-8")
     except Exception:
-        template = (
+        return (
             "Extract laws for {{subject}} in {{jurisdiction}} / {{domain}}. "
             "Return a JSON array only with title, citation, source_url from materials, "
             "and meta_nexus. No markdown."
         )
+
+
+def _load_system_prompt(cell: ResearchCell) -> str:
+    template = _prompt_template()
     return (
         template.replace("{{subject}}", cell.subject)
         .replace("{{jurisdiction}}", cell.jurisdiction)
@@ -1287,6 +1313,7 @@ def _seed_lookup_keys(jid: str, domain_id: str) -> list[tuple[str, str]]:
     return list(dict.fromkeys(keys))
 
 
+@lru_cache(maxsize=1)
 def _us_state_or_city_ids() -> frozenset[str]:
     """Lazy catalog lookup of us_state / us_city ids (empty if catalog unavailable)."""
     try:
@@ -1478,6 +1505,40 @@ def _message_text(response: Any) -> str:
     return str(content or "")
 
 
+def _blob_candidate(text: str, start: int) -> str | None:
+    """Well-formed {...}/[...] blob at ``start`` (string-aware bracket scan).
+
+    A subtree missing exactly one closing bracket is auto-closed so a
+    truncated wrapper around complete inner JSON can still be recovered;
+    deeper truncation returns None.
+    """
+    stack: list[str] = []
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+                if not stack:
+                    return text[start : i + 1]
+    if len(stack) == 1 and not in_str:
+        return text[start:] + ("}" if stack[0] == "{" else "]")
+    return None
+
+
 def _extract_json_payload(text: str) -> Any:
     raw = (text or "").strip()
     if not raw:
@@ -1496,6 +1557,22 @@ def _extract_json_payload(text: str) -> Any:
         if start >= 0 and end > start:
             try:
                 return json.loads(raw[start : end + 1])
+            except Exception:
+                continue
+    # Truncated wrapper: an unclosed outer object/array around well-formed
+    # inner JSON ('{"drafts": [{"title": "x"}' -> '[{"title": "x"}]'). Only
+    # engaged when the outermost bracket never closes, so deliberately
+    # malformed blobs (two_invalid_blobs style) still yield None.
+    first = min((i for i in (raw.find("{"), raw.find("[")) if i >= 0), default=-1)
+    if first >= 0 and _blob_candidate(raw, first) is None:
+        for i in range(first + 1, len(raw)):
+            if raw[i] not in "{[":
+                continue
+            candidate = _blob_candidate(raw, i)
+            if candidate is None:
+                continue
+            try:
+                return json.loads(candidate)
             except Exception:
                 continue
     return None
@@ -1651,7 +1728,7 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
 def _llm_timeout_s() -> float:
     from langgraph_graph.meta_legal._env import env_float
 
-    return env_float("META_LEGAL_LLM_TIMEOUT_S", 30.0, minimum=5.0)
+    return env_float("META_LEGAL_LLM_TIMEOUT_S", 150.0, minimum=5.0)
 
 
 def _call_llm(
@@ -1806,7 +1883,7 @@ def _invoke_llm_for_drafts(
     """Extract drafts via structured output → JSON mode → text parse, with one empty retry.
 
     Never raises; empty list on total failure (caller records cell_errors).
-    Honours a single wall-clock budget (``META_LEGAL_LLM_TIMEOUT_S``, default 30s)
+    Honours a single wall-clock budget (``META_LEGAL_LLM_TIMEOUT_S``, default 150s)
     across all attempts so multi-path fallback cannot stack timeouts.
     """
     messages = _build_extract_messages(cell, context, retry=False)
@@ -1883,6 +1960,202 @@ def _resolve_worker_model(llm: Any | None) -> str:
     return env_model
 
 
+
+# ---------------------------------------------------------------------------
+# Per-cell draft validation (folded from the former nodes/validate_cell.py).
+# ---------------------------------------------------------------------------
+
+
+def _as_draft(item: Any) -> LawRecordDraft | None:
+    """Coerce a draft-like value to LawRecordDraft; return None if unusable."""
+    if item is None:
+        return None
+    if isinstance(item, LawRecordDraft) and not isinstance(item, LawRecord):
+        return item
+    if isinstance(item, LawRecord):
+        # Already validated record re-entering — treat as draft for re-check.
+        return LawRecordDraft(**item.model_dump(exclude={"validated"}, exclude_none=False))
+    if isinstance(item, Mapping):
+        try:
+            data = dict(item)
+            data.pop("validated", None)
+            return LawRecordDraft.model_validate(data)
+        except Exception:
+            return None
+    return None
+
+
+def _norm_id(value: str, *, kind: str) -> str:
+    """Normalize jurisdiction/domain ids for comparison (slug forms)."""
+    text = (value or "").strip()
+    if not text:
+        return ""
+    if kind == "jurisdiction":
+        # jurisdiction_id is already a slug in ResearchCell; still slugify aliases.
+        return slugify(normalize_jurisdiction(text))
+    if kind == "domain":
+        return normalize_domain(text)
+    return slugify(text)
+
+
+def _canonical_cell_jurisdiction_id(cell: ResearchCell | None) -> str:
+    """Stable gold-compatible jurisdiction slug for the active cell."""
+    if cell is None:
+        return ""
+    raw = (cell.jurisdiction_id or "").strip()
+    if raw:
+        return _norm_id(raw, kind="jurisdiction")
+    label = (cell.jurisdiction or "").strip()
+    if label:
+        return _norm_id(label, kind="jurisdiction")
+    return ""
+
+
+def _url_host(url: str) -> str:
+    """Lowercased host of ``url`` (empty when unparsable or absent)."""
+    try:
+        return (urlparse(url).netloc or "").lower()
+    except Exception:
+        return ""
+
+
+def _rejection_reasons(
+    draft: LawRecordDraft,
+    cell: ResearchCell | None,
+    allowed_hosts: frozenset[str] | None = None,
+) -> list[str]:
+    """Return ordered reason codes for a draft (empty ⇒ accept)."""
+    reasons: list[str] = []
+
+    title = (draft.title or "").strip()
+    if not title:
+        reasons.append("missing_title")
+
+    source_url = (draft.source_url or "").strip()
+    if not source_url:
+        reasons.append("missing_citation")
+    elif allowed_hosts is not None and _url_host(source_url) not in allowed_hosts:
+        # Source-allowlist: the cited host was never searched/fetched for THIS cell.
+        reasons.append("unverified_source")
+
+    nexus = (draft.meta_nexus or "").strip()
+    if not nexus:
+        reasons.append("missing_meta_nexus")
+    elif slugify(nexus) not in _META_NEXUS_OK and nexus not in _META_NEXUS_OK:  # noqa: SIM102
+        # Allow exact tags; also accept already-slug forms.
+        # Unknown free-text nexus is treated as missing/unclear.
+        if slugify(nexus) not in {slugify(v) for v in _META_NEXUS_OK}:
+            reasons.append("missing_meta_nexus")
+
+    if cell is not None:
+        draft_j = _norm_id(draft.jurisdiction_id, kind="jurisdiction")
+        cell_j = _norm_id(cell.jurisdiction_id, kind="jurisdiction")
+        if draft_j and cell_j and draft_j != cell_j or not draft_j and cell_j:
+            reasons.append("jurisdiction_mismatch")
+
+        draft_d = _norm_id(draft.domain_id, kind="domain")
+        cell_d = _norm_id(cell.domain_id, kind="domain")
+        if draft_d and cell_d and draft_d != cell_d or not draft_d and cell_d:
+            reasons.append("domain_mismatch")
+
+    return reasons
+
+
+def validate_drafts(
+    drafts: list[LawRecordDraft] | list[Any] | None,
+    cell: ResearchCell | None = None,
+    *,
+    allowed_sources: Iterable[str] | None = None,
+) -> tuple[list[LawRecord], list[RejectedRecord]]:
+    """Rule-based validation of drafts for one cell (or unbound).
+
+    When ``allowed_sources`` is given, a draft whose ``source_url`` host was
+    not among the URLs searched/fetched for this cell is rejected with
+    ``unverified_source``. ``None`` keeps the check off (legacy callers).
+
+    Returns ``(accepted, rejected)``. Malformed items become rejected with
+    ``malformed_draft`` rather than raising.
+    """
+    accepted: list[LawRecord] = []
+    rejected: list[RejectedRecord] = []
+
+    if not drafts:
+        return accepted, rejected
+
+    allowed_hosts: frozenset[str] | None = None
+    if allowed_sources is not None:
+        allowed_hosts = frozenset(h for h in (_url_host(str(u)) for u in allowed_sources) if h)
+
+    cell_id = cell.cell_id if cell is not None else ""
+
+    for item in drafts:
+        draft = _as_draft(item)
+        if draft is None:
+            # Preserve something inspectable when possible.
+            fallback = LawRecordDraft(
+                title="",
+                jurisdiction_id=cell.jurisdiction_id if cell else "",
+                domain_id=cell.domain_id if cell else "",
+                meta_nexus="",
+                source_url="",
+                cell_id=cell_id,
+            )
+            if isinstance(item, Mapping):
+                # Best-effort partial fill for debugging.
+                for key in (
+                    "title",
+                    "jurisdiction_id",
+                    "domain_id",
+                    "source_url",
+                    "cell_id",
+                    "meta_nexus",
+                ):
+                    val = item.get(key)
+                    if isinstance(val, str) and val:
+                        setattr(fallback, key, val)
+            rejected.append(
+                RejectedRecord(
+                    record=fallback,
+                    reason="malformed_draft",
+                    cell_id=cell_id or getattr(fallback, "cell_id", "") or "",
+                )
+            )
+            continue
+
+        # Stamp cell_id when missing and cell is known.
+        if cell is not None and not (draft.cell_id or "").strip():
+            draft = draft.model_copy(update={"cell_id": cell.cell_id})
+
+        reasons = _rejection_reasons(draft, cell, allowed_hosts)
+        if reasons:
+            rejected.append(
+                RejectedRecord(
+                    record=draft,
+                    reason=",".join(reasons),
+                    cell_id=cell_id or draft.cell_id or "",
+                )
+            )
+            continue
+
+        payload = draft.model_dump()
+        # Producer-side alignment: accepted records always carry the cell's
+        # canonical jurisdiction/domain slugs (gold-compatible), even if the
+        # LLM emitted a label/alias that normalized equivalently.
+        if cell is not None:
+            canon_j = _canonical_cell_jurisdiction_id(cell)
+            canon_d = _norm_id(cell.domain_id or cell.domain, kind="domain")
+            if canon_j:
+                payload["jurisdiction_id"] = canon_j
+            if canon_d:
+                payload["domain_id"] = canon_d
+            if not (payload.get("cell_id") or "").strip():
+                payload["cell_id"] = cell.cell_id
+        accepted.append(LawRecord(**payload, validated=True))
+
+    return accepted, rejected
+
+
+
 def run_research_cell(
     cell: Mapping[str, Any] | ResearchCell | Any,
     *,
@@ -1896,7 +2169,9 @@ def run_research_cell(
 ) -> dict[str, list[Any]]:
     """Core research worker with injectable tools/LLM (for tests).
 
-    Returns reducer-friendly ``{"drafts": [...]}`` and/or ``{"cell_errors": [...]}``.
+    Returns reducer-friendly ``{"drafts": [...], "accepted": [...],
+    "rejected": [...]}`` and/or ``{"cell_errors": [...]}``. Drafts are
+    rule-validated per cell before return (see ``validate_drafts``).
     Never raises.
     """
     search = search_fn or default_web_search
@@ -2095,25 +2370,47 @@ def run_research_cell(
         remaining = []
     workers = max(1, min(int(max_fetch_workers or 12), len(remaining) or 1))
     if remaining:
-        with _DaemonThreadPoolExecutor(max_workers=workers) as pool:
+        # Bounded like the seed prefetch above: a hung fetch must not pin the
+        # cell forever. Keep partials; cancel stragglers on budget exhaustion.
+        pool = _DaemonThreadPoolExecutor(max_workers=workers)
+        try:
             future_map = {pool.submit(_fetch_one, url): url for url in remaining}
-            for fut in as_completed(future_map):
-                url = future_map[fut]
-                try:
-                    got_url, text, err_msg = fut.result()
-                except Exception as exc:
-                    errors.append(
-                        CellError(
-                            cell_id=cell_id,
-                            message=f"fetch failed for {url}: {exc}",
-                            stage="research",
+            fetch_budget_s = _fetch_budget_s()
+            try:
+                for fut in as_completed(future_map, timeout=fetch_budget_s):
+                    url = future_map[fut]
+                    try:
+                        got_url, text, err_msg = fut.result()
+                    except Exception as exc:
+                        errors.append(
+                            CellError(
+                                cell_id=cell_id,
+                                message=f"fetch failed for {url}: {exc}",
+                                stage="research",
+                            )
                         )
+                        continue
+                    if err_msg:
+                        errors.append(
+                            CellError(cell_id=cell_id, message=err_msg, stage="research")
+                        )
+                    if (text or "").strip():
+                        fetched_by_url[got_url] = text.strip()
+            except FuturesTimeout:
+                errors.append(
+                    CellError(
+                        cell_id=cell_id,
+                        message=(
+                            f"fetch budget {fetch_budget_s:.1f}s exhausted; "
+                            "keeping partial fetches"
+                        ),
+                        stage="research",
                     )
-                    continue
-                if err_msg:
-                    errors.append(CellError(cell_id=cell_id, message=err_msg, stage="research"))
-                if (text or "").strip():
-                    fetched_by_url[got_url] = text.strip()
+                )
+                for fut in future_map:
+                    fut.cancel()
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     fetched_blocks: list[str] = [
         f"URL: {url}\n{fetched_by_url[url]}" for url in urls if url in fetched_by_url
@@ -2173,8 +2470,11 @@ def run_research_cell(
             )
         )
 
-    # Skip LLM when harvest already produced enough drafts (coverage preserved).
-    need_llm = len(drafts) < 3
+    # Skip LLM when harvest already produced enough drafts (coverage preserved);
+    # META_LEGAL_FORCE_LLM=1 forces extraction even when the harvest floor covers the cell.
+    from langgraph_graph.meta_legal._env import env_bool
+
+    need_llm = env_bool("META_LEGAL_FORCE_LLM", False) or len(drafts) < 3
     active_llm = llm
     if need_llm and active_llm is None:
         try:
@@ -2225,7 +2525,24 @@ def run_research_cell(
             )
         )
 
-    result: dict[str, list[Any]] = {"drafts": drafts}
+    # Per-cell rule validation (folded from the former validate_cell node, which
+    # only ever saw merged state with cell=None). Mismatch rejection, canonical
+    # id alignment, and cell stamping now run inside each Send fan-out branch.
+    allowed_sources: set[str] = set(fetched_by_url)
+    allowed_sources.update(seed_urls)
+    for hit in search_hits:
+        u = str(hit.get("url") or "").strip()
+        if u.startswith("http"):
+            allowed_sources.add(u)
+    accepted, rejected = validate_drafts(
+        drafts, cell=resolved, allowed_sources=allowed_sources
+    )
+
+    result: dict[str, list[Any]] = {
+        "drafts": drafts,
+        "accepted": accepted,
+        "rejected": rejected,
+    }
     if errors:
         result["cell_errors"] = errors
     return result
@@ -2235,7 +2552,8 @@ def research_cell(state: dict[str, Any] | ResearchCell | Any) -> dict[str, list[
     """LangGraph node entry: research one Send() cell payload.
 
     Expected state is a cell payload (flat ResearchCell fields or nested
-    ``cell``). Returns ``drafts`` / ``cell_errors`` list updates only.
+    ``cell``). Returns ``drafts`` / ``accepted`` / ``rejected`` /
+    ``cell_errors`` list updates only (validation is folded in per cell).
     """
     try:
         return run_research_cell(state)
@@ -2260,4 +2578,5 @@ __all__ = [
     "run_research_cell",
     "seed_urls_for_cell",
     "select_urls",
+    "validate_drafts",
 ]

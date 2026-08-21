@@ -29,7 +29,6 @@ class ActionRequest(TypedDict, total=False):
 class ReviewConfig(TypedDict, total=False):
     action_name: str
     allowed_decisions: list[DecisionType]
-    args_schema: dict[str, Any]
 
 
 class HITLRequest(TypedDict):
@@ -56,7 +55,8 @@ def build_hitl_request(
     allowed_decisions: list[DecisionType] | None = None,
 ) -> HITLRequest:
     """Build an Agent Chat UI–compatible interrupt payload for one tool call."""
-    decisions = allowed_decisions or ["approve", "edit", "reject"]
+    if allowed_decisions is None:
+        allowed_decisions = ["approve", "edit", "reject"]
     return {
         "action_requests": [
             {
@@ -68,7 +68,7 @@ def build_hitl_request(
         "review_configs": [
             {
                 "action_name": tool_name,
-                "allowed_decisions": decisions,
+                "allowed_decisions": allowed_decisions,
             }
         ],
     }
@@ -93,10 +93,16 @@ def _first_decision(resume_value: Any) -> Decision | None:
 
     if isinstance(resume_value, dict):
         decisions = resume_value.get("decisions")
-        if isinstance(decisions, list) and decisions:
+        if isinstance(decisions, list):
+            if not decisions:
+                return {"type": "reject", "message": "No decision provided."}
             first = decisions[0]
             if isinstance(first, dict) and "type" in first:
                 return first  # type: ignore[return-value]
+            return {
+                "type": "reject",
+                "message": "Decision item is missing a 'type'.",
+            }
         if "type" in resume_value:
             return resume_value  # type: ignore[return-value]
 
@@ -105,8 +111,10 @@ def _first_decision(resume_value: Any) -> Decision | None:
         if isinstance(first, dict) and "type" in first:
             return first  # type: ignore[return-value]
 
-    # Truthy/falsey fallback for unexpected shapes.
-    return {"type": "approve" if bool(resume_value) else "reject"}
+    # Unrecognized payloads fail closed instead of approving implicitly.
+    if bool(resume_value):
+        return {"type": "reject", "message": "Unrecognized resume payload"}
+    return {"type": "reject"}
 
 
 def resolve_hitl_decision(

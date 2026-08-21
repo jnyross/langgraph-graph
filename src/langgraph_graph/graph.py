@@ -13,6 +13,7 @@ render approve / edit / reject controls.
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -58,9 +59,10 @@ def plan_node(state: AgentState) -> dict[str, Any]:
     )
     try:
         raw = str(_llm().invoke(prompt).content)
-    except Exception:
+    except Exception as exc:
         # Keep HITL demos usable when the local model endpoint is down.
         # Keep this user-facing text clean — it surfaces in Agent Chat UI.
+        logging.getLogger(__name__).warning("plan LLM call failed: %s", exc)
         raw = request or "Handle the user's request"
     steps = [line.strip("- ").strip() for line in str(raw).splitlines() if line.strip()]
     if not steps and request:
@@ -112,12 +114,15 @@ def act_node(state: AgentState) -> dict[str, Any]:
     if granted:
         tool = next((t for t in ALL_TOOLS if t.name == resolved_tool), None)
         if tool is not None:
-            output = tool.invoke(resolved_args)  # type: ignore[arg-type]
+            try:
+                output = tool.invoke(resolved_args)  # type: ignore[arg-type]
+            except Exception as exc:
+                output = f"Tool {resolved_tool!r} failed: {exc}"
         else:
             output = f"Unknown tool {resolved_tool!r}; nothing executed."
     else:
         output = reject_message or "Action rejected by human; nothing executed."
-    return {"approvals": approvals, "pending_action": None, "output": output}
+    return {"approvals": approvals, "output": output}
 
 
 def reply_node(state: AgentState) -> dict[str, Any]:

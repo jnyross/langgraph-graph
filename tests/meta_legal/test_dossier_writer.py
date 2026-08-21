@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from langgraph_graph.meta_legal.models import (
+    CellError,
     LawRecord,
     LawRecordDraft,
     RejectedRecord,
@@ -102,6 +103,8 @@ def test_accepted_writes_law_files_and_manifest(tmp_path: Path) -> None:
     assert index["accepted_count"] == 1
     assert index["law_ids"] == ["gdpr-art-5"]
     assert index["model"] == "deepseek/deepseek-v4-flash"
+    assert index["rejected"] == []
+    assert index["errors"] == []
 
 
 def test_rejected_only_under_rejected(tmp_path: Path) -> None:
@@ -126,7 +129,24 @@ def test_rejected_only_under_rejected(tmp_path: Path) -> None:
         jurisdictions=["United States"],
         domains=["privacy"],
         accepted=[],
-        rejected=[rejected],
+        rejected=[
+            rejected,
+            {
+                "record": {
+                    "law_id": "blog-opinion",
+                    "title": "Blog Opinion Draft",
+                    "jurisdiction_id": "us",
+                    "domain_id": "privacy",
+                    "cell_id": "us::privacy",
+                },
+                "reason": "secondary source only",
+                "cell_id": "",
+            },
+        ],
+        cell_errors=[
+            CellError(cell_id="us::privacy", message="llm timeout", stage="research"),
+            {"cell_id": "eu::privacy", "message": "parse failure", "stage": "validate"},
+        ],
     )
 
     laws_dir = dossier / "laws"
@@ -143,7 +163,7 @@ def test_rejected_only_under_rejected(tmp_path: Path) -> None:
     rejected_path = dossier / "rejected" / f"{safe_cell}.json"
     assert rejected_path.is_file()
     payload = json.loads(rejected_path.read_text(encoding="utf-8"))
-    assert payload["count"] == 1
+    assert payload["count"] == 2
     assert payload["rejected"][0]["reason"] == "missing primary citation"
     assert payload["rejected"][0]["record"]["law_id"] == "weak-cite"
 
@@ -154,7 +174,31 @@ def test_rejected_only_under_rejected(tmp_path: Path) -> None:
 
     manifest = json.loads((dossier / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["accepted_count"] == 0
-    assert manifest["rejected_count"] == 1
+    assert manifest["rejected_count"] == 2
+
+    index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
+    assert index["rejected_count"] == 2
+    assert index["rejected"] == [
+        {
+            "law_id": "weak-cite",
+            "title": "Weak Citation Draft",
+            "reason": "missing primary citation",
+            "cell_id": "us::privacy",
+        },
+        {
+            "law_id": "blog-opinion",
+            "title": "Blog Opinion Draft",
+            "reason": "secondary source only",
+            "cell_id": "us::privacy",
+        },
+    ]
+    assert index["error_count"] == 2
+    assert index["errors"] == [
+        {"cell_id": "us::privacy", "message": "llm timeout", "stage": "research"},
+        {"cell_id": "eu::privacy", "message": "parse failure", "stage": "validate"},
+    ]
+    assert "rejected_truncated" not in index
+    assert "errors_truncated" not in index
 
 
 def test_zero_accepted_still_writes_manifest(tmp_path: Path) -> None:
@@ -181,6 +225,8 @@ def test_zero_accepted_still_writes_manifest(tmp_path: Path) -> None:
     index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
     assert index["law_ids"] == []
     assert index["accepted_count"] == 0
+    assert index["rejected"] == []
+    assert index["errors"] == []
 
 
 def test_slash_and_space_ids_are_filesystem_safe(tmp_path: Path) -> None:

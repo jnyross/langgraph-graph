@@ -12,6 +12,7 @@ _ALNUM = re.compile(r"[^a-z0-9]+", re.IGNORECASE)
 _SLUG_STRIP = re.compile(r"[^\w\s-]", re.UNICODE)
 _SLUG_SPACE = re.compile(r"[-\s]+")
 _SLUG_US = re.compile(r"_+")
+_RANGE_SEP = re.compile(r"\d\s*(?:-|–|—|to|through)\s*\d", re.IGNORECASE)
 
 # Tracking / document chrome query keys to ignore for URL equality.
 _DROP_QUERY_KEYS = frozenset(
@@ -230,34 +231,39 @@ def citation_keys(value: str | None) -> set[str]:
     if compact:
         keys.add(compact)
 
-    # Digit-run fingerprint: only when multi-digit or multi-number (avoid A-1 vs B-1).
+    # Digit-run fingerprint: only when every run has >= 2 digits. Single-digit
+    # runs (e.g. Art. 5(1)(a)) collide across instruments, so they contribute
+    # no key at all.
     digits = re.findall(r"\d+", text)
-    if digits:
-        strong = [d for d in digits if len(d) >= 2]
-        if len(strong) >= 1:
-            keys.add("d:" + "-".join(digits))
-        elif len(digits) >= 2:
-            keys.add("d:" + "-".join(digits))
-        for d in strong:
-            if len(d) >= 3:
-                keys.add("n:" + d)
+    if digits and all(len(d) >= 2 for d in digits):
+        keys.add("d:" + "-".join(digits))
+    for d in digits:
+        if len(d) >= 3:
+            keys.add("n:" + d)
 
-    # Alpha+digit code tokens sorted (tfeu101 == 101tfeu).
-    alpha_num = re.findall(r"[a-z]{2,}\d+|\d+[a-z]{2,}", raw)
+    # Alpha+digit code tokens sorted (tfeu101 == 101tfeu). The digit run
+    # trailing a code token stays part of the token (usc123456, never a bare
+    # usc) so a shared statute-family prefix cannot collide across differing
+    # section numbers (15 U.S.C. §123456 vs 15 USC 1234567).
+    alpha_num = re.findall(r"[a-z]{2,}\d+|\d+[a-z]{2,}\d*", raw)
     if alpha_num:
-        # Normalize each token to letters-then-digits form.
+        # Normalize each token to letters-then-digits form. A leading digit
+        # run glued in front of the code (``15usc123456``) yields to a
+        # trailing run when one exists, so both sides key on the section
+        # number (usc123456), not the statute title number.
         normed: list[str] = []
         for tok in alpha_num:
-            m = re.fullmatch(r"([a-z]+)(\d+)", tok) or re.fullmatch(r"(\d+)([a-z]+)", tok)
+            m = re.fullmatch(r"(\d+)([a-z]+)(\d*)", tok)
             if m:
-                g1, g2 = m.group(1), m.group(2)
-                if g1.isalpha():
-                    letters, nums = g1, g2
-                else:
-                    letters, nums = g2, g1
-                normed.append(f"{letters}{nums}")
+                lead, letters, trail = m.groups()
+                nums = trail or lead
             else:
-                normed.append(tok)
+                mm = re.fullmatch(r"([a-z]+)(\d+)", tok)
+                if not mm:
+                    normed.append(tok)
+                    continue
+                letters, nums = mm.group(1), mm.group(2)
+            normed.append(f"{letters}{nums}")
         if normed:
             keys.add("t:" + "|".join(sorted(normed)))
             for t in normed:
@@ -272,7 +278,9 @@ def citations_match(a: str | None, b: str | None) -> bool:
     Prefers exact key overlap. Also allows a multi-digit number from one side
     to appear inside the other's compact alnum form when both share a code
     family hint (usc/cfr/tfeu/eli year-number), carefully avoiding single-digit
-    collisions.
+    collisions. The substring branch additionally requires an explicit numeric
+    range separator (``6501–6506``) in one of the raw texts, so a bare prefix
+    like ``15 USC 1234567`` never matches ``15 U.S.C. §123456``.
     """
     ka = citation_keys(a)
     kb = citation_keys(b)
@@ -286,7 +294,7 @@ def citations_match(a: str | None, b: str | None) -> bool:
     if _safe(ka) & _safe(kb):
         return True
 
-    # Partial range: gold "15usc65016506" vs pred "15usc6501".
+    # Partial range: gold "15 U.S.C. §§ 6501–6506" vs pred "15 USC 6501".
     a_raw = _ALNUM.sub("", str(a or "")).lower()
     b_raw = _ALNUM.sub("", str(b or "")).lower()
     if not a_raw or not b_raw:
@@ -304,11 +312,15 @@ def citations_match(a: str | None, b: str | None) -> bool:
     fa, fb = _family(a_raw), _family(b_raw)
     if fa and fa == fb:
         shorter, longer = (a_raw, b_raw) if len(a_raw) <= len(b_raw) else (b_raw, a_raw)
-        # Require the shorter compact form to be a contiguous substring and
-        # at least 6 chars (e.g. 15usc1 is too short / risky).
-        if len(shorter) >= 6 and shorter in longer:
+        # Require the shorter compact form to be a contiguous substring, at
+        # least 6 chars, and an explicit numeric range separator in one of the
+        # raw texts; bare numeric prefixes must not match.
+        if (
+            len(shorter) >= 6
+            and shorter in longer
+            and (_RANGE_SEP.search(str(a or "")) or _RANGE_SEP.search(str(b or "")))
+        ):
             return True
-
     # Reordered article forms: tfeu101 vs 101tfeu via shared t1 keys already;
     # also compare digit sets when both have a single strong code token.
     a_nums = {m for m in re.findall(r"\d+", str(a or "")) if len(m) >= 2}
