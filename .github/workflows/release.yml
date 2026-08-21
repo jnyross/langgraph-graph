@@ -1,0 +1,94 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: "!contains(github.event.head_commit.message, 'chore(release):')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute next version
+        id: ver
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess, pathlib
+          def sh(*a):
+              return subprocess.run(a, capture_output=True, text=True).stdout.strip()
+          tags = [t for t in sh("git", "tag", "--list").splitlines()
+                  if re.fullmatch(r"v\d+\.\d+\.\d+", t)]
+          def key(t): return tuple(int(x) for x in t[1:].split("."))
+          last = max(tags, key=key) if tags else None
+          rng = f"{last}..HEAD" if last else "HEAD"
+          subjects = [s for s in sh("git", "log", "--format=%s", rng).splitlines() if s.strip()]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              if not subjects:
+                  out.write("cut=false\n")
+                  raise SystemExit
+              if any("BREAKING CHANGE" in s or re.match(r"^(feat|fix)!", s) for s in subjects):
+                  bump = (1, 0, 0)
+              elif any(s.startswith("feat") or "[minor]" in s for s in subjects):
+                  bump = (0, 1, 0)
+              else:
+                  bump = (0, 0, 1)
+              if last:
+                  base = key(last)
+                  ver = tuple(b + d for b, d in zip(base, bump))
+              else:
+                  p = pathlib.Path("plugin.json")
+                  pat = r'"version":\s*"(\d+)\.(\d+)\.(\d+)"'
+                  if not p.exists():
+                      p = pathlib.Path("pyproject.toml")
+                      pat = r'(?m)^version\s*=\s*"(\d+)\.(\d+)\.(\d+)"'
+                  text = p.read_text(encoding="utf-8") if p.exists() else ""
+                  m = re.search(pat, text)
+                  ver = tuple(int(g) for g in m.groups()) if m else (0, 1, 0)
+              out.write(f"cut=true\nversion={ver[0]}.{ver[1]}.{ver[2]}\n")
+          PY
+      - name: Sync manifest version
+        if: steps.ver.outputs.cut == 'true'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os, re, pathlib
+          v = os.environ["VERSION"]
+          pp = pathlib.Path("plugin.json")
+          tp = pathlib.Path("pyproject.toml")
+          if pp.exists():
+              t = re.sub(r'("version":\s*)"\d+\.\d+\.\d+"', rf'\g<1>"{v}"',
+                         pp.read_text(encoding="utf-8"), count=1)
+              pp.write_text(t, encoding="utf-8")
+          elif tp.exists():
+              t = re.sub(r'(?m)^(version\s*=\s*)"\d+\.\d+\.\d+"', rf'\g<1>"{v}"',
+                         tp.read_text(encoding="utf-8"), count=1)
+              tp.write_text(t, encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u
+          git commit -m "chore(release): v${VERSION} [skip ci]" || exit 0
+          git push origin HEAD:main
+      - name: Tag and create release
+        if: steps.ver.outputs.cut == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" --generate-notes --title "v${VERSION}"
